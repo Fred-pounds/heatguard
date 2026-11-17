@@ -1,0 +1,87 @@
+{
+  "id": "niosh_2016",
+  "name": "NIOSH Criteria for a Recommended Standard: Occupational Exposure to Heat and Hot Environments",
+  "edition": "Revised Criteria 2016",
+  "publication": "DHHS (NIOSH) Publication No. 2016-106",
+  "url": "https://www.cdc.gov/niosh/docs/2016-106/",
+  "license": "Work of the U.S. federal government; not subject to copyright in the United States.",
+  "limits": {
+    "units": "degC-WBGT, 1-hour time-weighted average; M = metabolic rate in watts",
+    "REL": {
+      "label": "Recommended Exposure Limit (acclimatized workers)",
+      "equation": "REL = 56.7 - 11.5 * log10(M)",
+      "a": 56.7,
+      "b": 11.5
+    },
+    "RAL": {
+      "label": "Recommended Alert Limit (unacclimatized workers)",
+      "equation": "RAL = 59.9 - 14.1 * log10(M)",
+      "a": 59.9,
+      "b": 14.1
+    }
+  },
+  "metabolic_rates": {
+    "source": "Representative metabolic rate classes 0-4 of ISO 7243:2017 (65, 100, 165, 230, 290 W/m2) converted for a standard 1.8 m2 body surface area. Sites should replace these with task-specific estimates where available.",
+    "classes": {
+      "rest": {"label": "Rest", "watts": 117, "examples": "Sitting at ease"},
+      "light": {"label": "Light", "watts": 180, "examples": "Sitting or standing with light manual work, driving, inspecting"},
+      "moderate": {"label": "Moderate", "watts": 297, "examples": "Sustained hand/arm work, walking 3.5-5.5 km/h, operating hand tools"},
+      "heavy": {"label": "Heavy", "watts": 414, "examples": "Intense arm and trunk work, carrying heavy material, shovelling, sawing"},
+      "very_heavy": {"label": "Very heavy", "watts": 522, "examples": "Very intense activity at fast to maximum pace, digging, climbing with loads"}
+    },
+    "rest_class_for_work_rest_twa": "rest"
+  },
+  "work_rest_regimes": {
+    "source": "Work/rest cycles per hour shown alongside the RAL/REL curves in NIOSH 2016. The 1-hour TWA metabolic rate is computed as (work_min * M_work + rest_min * M_rest) / 60, with rest assumed in the same thermal environment (conservative).",
+    "regimes": [
+      {"id": "continuous", "label": "Continuous work (60/0)", "work_min": 60, "rest_min": 0},
+      {"id": "45_15", "label": "45 min work / 15 min rest", "work_min": 45, "rest_min": 15},
+      {"id": "30_30", "label": "30 min work / 30 min rest", "work_min": 30, "rest_min": 30},
+      {"id": "15_45", "label": "15 min work / 45 min rest", "work_min": 15, "rest_min": 45}
+    ]
+  },
+  "clothing_adjustment_factors": {
+    "source": "Clothing adjustment values (degC-WBGT added to measured WBGT) reproduced in NIOSH 2016 and the OSHA Technical Manual Sec. III Ch. 4, based on Bernard and co-workers. Values apply to the listed ensembles only.",
+    "categories": {
+      "standard_work_clothing": {"label": "Standard work clothing (shirt and trousers)", "caf": 0.0},
+      "long_sleeved_protective": {"label": "Long-sleeved woven protective clothing", "caf": 0.0, "note": "Treated as woven work clothing (long-sleeved shirt and trousers)."},
+      "cloth_coveralls": {"label": "Cloth (woven) coveralls", "caf": 0.0},
+      "double_layer_woven": {"label": "Double-layer woven clothing", "caf": 3.0},
+      "sms_polypropylene_coveralls": {"label": "SMS polypropylene coveralls", "caf": 0.5},
+      "polyolefin_coveralls": {"label": "Polyolefin coveralls", "caf": 1.0},
+      "vapor_barrier_coveralls": {"label": "Limited-use vapour-barrier coveralls", "caf": 11.0, "note": "Guidance cautions that WBGT-based assessment is of limited validity for vapour-barrier and encapsulating ensembles; physiological monitoring by qualified personnel is advised."},
+      "specialized_ppe": {"label": "Specialized protective equipment (unspecified)", "caf": null, "requires_configuration": true, "note": "Thermal impact differs by ensemble. A site OHS professional must configure a documented adjustment value before an assessment can be produced."}
+    }
+  },
+  "acclimatization": {
+    "acclimatized": {"limit": "REL", "label": "Acclimatized"},
+    "not_acclimatized": {"limit": "RAL", "label": "Not acclimatized"},
+    "unknown": {"limit": "RAL", "label": "Unknown", "note": "Unknown status is NOT treated as acclimatized; the more protective RAL is applied and confidence is reduced."},
+    "schedule_new_workers": "NIOSH 2016: new workers should have no more than 20% of the usual duration of heat exposure on day 1 and no more than a 20% increase each additional day.",
+    "schedule_experienced_workers": "NIOSH 2016: workers with previous experience should have no more than 50% on day 1, 60% on day 2, 80% on day 3 and 100% on day 4."
+  },
+  "risk_categories": {
+    "source": "HeatGuard mapping (configurable). Categories are defined by which documented work/rest regime keeps the 1-hour exposure within the applicable NIOSH limit, not by fixed WBGT values.",
+    "categories": [
+      {"id": "routine", "level": 0, "label": "Routine monitoring", "color": "green", "rule": "Effective WBGT below the applicable limit at the crew's current work/rest regime by at least the caution margin."},
+      {"id": "caution", "level": 1, "label": "Caution", "color": "yellow", "rule": "Effective WBGT within the caution margin of the applicable limit at the current regime."},
+      {"id": "elevated", "level": 2, "label": "Elevated", "color": "orange", "rule": "Applicable limit exceeded at the current regime; a 45/15 work/rest regime would bring the TWA within the limit."},
+      {"id": "high", "level": 3, "label": "High", "color": "red", "rule": "Applicable limit exceeded; only a 30/30 or 15/45 work/rest regime would bring the TWA within the limit."},
+      {"id": "critical", "level": 4, "label": "Critical", "color": "darkred", "rule": "Applicable limit exceeded even with a 15/45 work/rest regime."}
+    ]
+  },
+  "site_policy": {
+    "caution_margin_c": 1.0,
+    "caution_margin_source": "Site policy setting (configurable). NOT a NIOSH value: it only controls how early an 'approaching the limit' caution is raised.",
+    "averaging": "conservative_max",
+    "averaging_note": "NIOSH limits are 1-hour TWAs. HeatGuard screens with max(latest effective WBGT, rolling 60-simulated-minute mean) so that improving conditions do not instantly clear a concern and rising conditions are recognised without waiting an hour."
+  },
+  "hydration": "NIOSH 2016 recommends that workers in the heat drink about 1 cup (8 oz, ~237 mL) of water every 15-20 minutes during moderate activity in moderately hot conditions; for prolonged sweating lasting several hours, sports drinks containing balanced electrolytes may be considered.",
+  "limitations": [
+    "RAL/REL apply to healthy workers; individual susceptibility (medical conditions, medications, prior heat illness) is not assessed.",
+    "Limits are 1-hour TWAs; short-interval readings are screened conservatively, not averaged exactly as specified.",
+    "Metabolic rates are category estimates, not measurements.",
+    "WBGT-based limits are not valid for encapsulating or vapour-barrier ensembles without expert review.",
+    "This is decision support only; it does not diagnose heat illness or clear any worker to resume work."
+  ]
+}
