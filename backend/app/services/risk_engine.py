@@ -260,14 +260,14 @@ class RiskEngine:
         over = d.effective_wbgt - d.limit_at_current_regime
         f.append(ContributingFactor(
             factor="Environmental heat (WBGT)",
-            detail=(f"Effective WBGT {d.effective_wbgt:.1f} degC vs {d.limit_type} {d.limit_at_current_regime:.1f} degC "
-                    f"at current regime ({'exceeds by' if over > 0 else 'below by'} {abs(over):.1f} degC)."),
+            detail=(f"Effective WBGT {d.effective_wbgt:.1f} °C vs {d.limit_type} {d.limit_at_current_regime:.1f} °C "
+                    f"at current regime ({'exceeds by' if over > 0 else 'below by'} {abs(over):.1f} °C)."),
             direction="increases_concern" if over > -d.caution_margin else "neutral",
         ))
         if d.rolling_mean_wbgt is not None and d.rolling_mean_wbgt > d.measured_wbgt + 0.2:
             f.append(ContributingFactor(
                 factor="Recent exposure retained",
-                detail=f"Rolling 60-min mean WBGT {d.rolling_mean_wbgt:.1f} degC exceeds the latest reading {d.measured_wbgt:.1f} degC; "
+                detail=f"Rolling 60-min mean WBGT {d.rolling_mean_wbgt:.1f} °C exceeds the latest reading {d.measured_wbgt:.1f} °C; "
                        "the higher value is used so a single cooler reading does not clear the concern.",
                 direction="increases_concern"))
         if r.globe_temperature is not None and r.dry_bulb is not None:
@@ -276,20 +276,20 @@ class RiskEngine:
                 src = "direct sun" if solar else "radiant sources"
                 f.append(ContributingFactor(
                     factor="Radiant heat",
-                    detail=f"Globe temperature exceeds air temperature by {excess:.1f} degC ({src}).",
+                    detail=f"Globe temperature exceeds air temperature by {excess:.1f} °C ({src}).",
                     direction="increases_concern"))
         if r.natural_wet_bulb is not None:
             share = 0.7 * r.natural_wet_bulb / max(d.measured_wbgt, 1e-6)
             f.append(ContributingFactor(
                 factor="Humidity / evaporative cooling",
-                detail=f"Natural wet-bulb {r.natural_wet_bulb:.1f} degC contributes {share:.0%} of WBGT"
+                detail=f"Natural wet-bulb {r.natural_wet_bulb:.1f} °C contributes {share:.0%} of WBGT"
                        + (f" (RH {r.relative_humidity:.0f}%)" if r.relative_humidity is not None else "") + ".",
                 direction="neutral"))
         if crew.workload in ("heavy", "very_heavy", "moderate"):
             f.append(ContributingFactor(
                 factor="Workload",
                 detail=f"{WORKLOAD_LABELS[crew.workload].capitalize()} work (~{metabolic:.0f} W) lowers the applicable limit "
-                       f"to {self.g.limit(d.limit_type, metabolic):.1f} degC for continuous work.",
+                       f"to {self.g.limit(d.limit_type, metabolic):.1f} °C for continuous work.",
                 direction="increases_concern"))
         if crew.acclimatization == "not_acclimatized":
             f.append(ContributingFactor(factor="Not acclimatized",
@@ -304,11 +304,11 @@ class RiskEngine:
             if d.effective_wbgt > ral:
                 f.append(ContributingFactor(
                     factor="New or returning workers",
-                    detail=f"Conditions exceed the RAL ({ral:.1f} degC); any new or returning (unacclimatized) worker in this crew would need extra protection.",
+                    detail=f"Conditions exceed the RAL ({ral:.1f} °C); any new or returning (unacclimatized) worker in this crew would need extra protection.",
                     direction="increases_concern"))
         if d.clothing_adjustment > 0:
             f.append(ContributingFactor(factor="Protective clothing",
-                                        detail=f"{clothing['label']} adds {d.clothing_adjustment:.1f} degC to effective WBGT.",
+                                        detail=f"{clothing['label']} adds {d.clothing_adjustment:.1f} °C to effective WBGT.",
                                         direction="increases_concern"))
         if d.current_regime != "continuous":
             f.append(ContributingFactor(factor="Work/rest regime in place",
@@ -330,19 +330,19 @@ class RiskEngine:
         regime = self.g.regime(d.current_regime)["label"].lower()
         env = "outdoor conditions with direct sun" if solar else ("indoor conditions" if site.environment == "indoor" else "shaded outdoor conditions")
         article = "an" if accl[0] in "aeiou" else "a"
-        base = (f"Effective WBGT of {d.effective_wbgt:.1f} degC in {env} for {article} {accl} crew doing {work} work "
-                f"({regime}); applicable {d.limit_type} is {d.limit_at_current_regime:.1f} degC.")
+        base = (f"Effective WBGT of {d.effective_wbgt:.1f} °C in {env} for {article} {accl} crew doing {work} work "
+                f"({regime}); applicable {d.limit_type} is {d.limit_at_current_regime:.1f} °C.")
         if category == "routine":
-            return base + f" Exposure is {d.margin_to_limit:.1f} degC below the limit: continue routine monitoring."
+            return base + f" Exposure is {d.margin_to_limit:.1f} °C below the limit: continue routine monitoring."
         if category == "caution":
-            return base + f" Exposure is within {self.g.caution_margin:.1f} degC of the limit: conditions are approaching the limit."
+            return base + f" Exposure is within {self.g.caution_margin:.1f} °C of the limit: conditions are approaching the limit."
         if category == "critical":
             return base + (" The limit is exceeded even with a 15 min work / 45 min rest regime, so work/rest scheduling alone "
                            "cannot keep exposure within the guideline: strenuous work should be stopped or postponed and "
                            "additional controls applied.")
         req = self.g.regime(d.required_regime)["label"] if d.required_regime else ""
         extra = " combined with the protective RAL" if crew.acclimatization != "acclimatized" else ""
-        return base + (f" The limit is exceeded by {-d.margin_to_limit:.1f} degC{extra}; at least a {req.lower()} regime "
+        return base + (f" The limit is exceeded by {-d.margin_to_limit:.1f} °C{extra}; at least a {req.lower()} regime "
                        f"(or equivalent workload reduction) is needed to remain within the guideline.")
 
     def _recommend(self, category: str, crew: Crew, d: LimitDetails, clothing: dict, solar: bool, site: Worksite) -> list[RecommendedAction]:
@@ -396,7 +396,7 @@ class RiskEngine:
                                        priority="advised", source=NIOSH))
         if d.clothing_adjustment > 0 and category not in ("routine",):
             a.append(RecommendedAction(action="Review protective clothing",
-                                       detail=f"{clothing['label']} adds {d.clothing_adjustment:.1f} degC. Consider lighter compliant ensembles or cooling garments.",
+                                       detail=f"{clothing['label']} adds {d.clothing_adjustment:.1f} °C. Consider lighter compliant ensembles or cooling garments.",
                                        priority="advised", source=NIOSH))
         if crew.acclimatization == "not_acclimatized":
             a.append(RecommendedAction(action="Follow an acclimatization schedule",

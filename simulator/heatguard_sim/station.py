@@ -97,8 +97,14 @@ class VirtualStation:
         return f"{(total // 60) % 24:02d}:{total % 60:02d}"
 
     # ------------------------------------------------------------------ physics
+    def profile_minute(self, minute: int) -> int:
+        """Scenario time; after the scenario ends it runs backwards (ping-pong) so there is no discontinuity."""
+        dur = max(1, self.scenario.duration_min)
+        m = minute % (2 * dur)
+        return m if m < dur else 2 * dur - 1 - m
+
     def drivers(self, minute: int) -> Drivers:
-        base = self.scenario.profile(float(minute % max(1, self.scenario.duration_min)))
+        base = self.scenario.profile(float(self.profile_minute(minute)))
         a = self.adjustments
         return Drivers(
             tdb=base.tdb + a.tdb_offset,

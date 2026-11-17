@@ -1,0 +1,49 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "worksites": {
+      ".read": "auth != null && (auth.token.role === 'supervisor' || auth.token.role === 'admin' || auth.token.role === 'worker')"
+    },
+    "crews": {
+      ".read": "auth != null && (auth.token.role === 'supervisor' || auth.token.role === 'admin')",
+      "$crew_id": {
+        ".read": "auth != null && auth.token.role === 'worker' && auth.token.crew_id === $crew_id"
+      }
+    },
+    "latest_assessments": {
+      ".read": "auth != null && (auth.token.role === 'supervisor' || auth.token.role === 'admin')",
+      "$crew_id": {
+        ".read": "auth != null && auth.token.role === 'worker' && auth.token.crew_id === $crew_id"
+      }
+    },
+    "sensor_readings": {
+      ".read": "auth != null && (auth.token.role === 'supervisor' || auth.token.role === 'admin')"
+    },
+    "assessments": {
+      ".read": "auth != null && (auth.token.role === 'supervisor' || auth.token.role === 'admin')"
+    },
+    "alerts": {
+      ".read": "auth != null && (auth.token.role === 'supervisor' || auth.token.role === 'admin')"
+    },
+    "interventions": {
+      ".read": "auth != null && (auth.token.role === 'supervisor' || auth.token.role === 'admin')"
+    },
+    "events": {
+      ".read": "auth != null && (auth.token.role === 'supervisor' || auth.token.role === 'admin')"
+    },
+    "evaluation": {
+      ".read": "auth != null && (auth.token.role === 'supervisor' || auth.token.role === 'admin')"
+    },
+    "simulation": {
+      ".read": "auth != null"
+    },
+    "system_health": {
+      ".read": "auth != null"
+    },
+    "individual_health": {
+      ".read": false,
+      ".write": false
+    }
+  }
+}

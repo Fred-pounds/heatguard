@@ -92,6 +92,22 @@ WORKER_MESSAGES = {
 }
 
 
+# Plain-language actions a worker can take themselves (supervisor actions stay on the dashboard).
+WORKER_ACTIONS = {
+    "routine": ["Drink water regularly, even if you are not thirsty", "Tell your supervisor if you feel unwell"],
+    "caution": ["Drink water often - about 1 cup every 15-20 minutes", "Check on your co-workers (buddy system)",
+                "Tell your supervisor straight away if you feel dizzy, sick or very tired"],
+    "elevated": ["Take your rest breaks in the shade or a cool area", "Drink water every 15-20 minutes",
+                 "Follow the work-rest schedule from your supervisor", "Watch your co-workers for signs of heat illness"],
+    "high": ["Follow the work-rest schedule from your supervisor", "Rest in shade or a cool area during breaks",
+             "Drink water every 15-20 minutes", "Slow down - do not rush heavy tasks", "Report any symptoms immediately"],
+    "critical": ["Stop strenuous work and follow your supervisor's instructions", "Move to shade or a cool area",
+                 "Drink water", "Report any symptoms immediately - yours or a co-worker's"],
+    "unavailable": ["Do not assume conditions are safe", "Keep drinking water and taking breaks in the shade",
+                    "Tell your supervisor if you feel unwell"],
+}
+
+
 @router.get("/worker/crews")
 async def worker_crews(svc: HeatGuardService = Depends(get_service)):
     """Minimal crew list for the worker app crew picker (no assessments of other crews)."""
@@ -111,10 +127,7 @@ async def worker_notice(crew_id: str, svc: HeatGuardService = Depends(get_servic
     key, text = WORKER_MESSAGES[cat]
     regime = crew["work_rest_regime"]
     reg = next((r for r in svc.guideline.regimes if r["id"] == regime), None)
-    actions = []
-    if a:
-        actions = [{"action": r["action"], "detail": r["detail"]} for r in a["recommended_actions"]
-                   if r["priority"] in ("required", "urgent", "advised")][:5]
+    actions = [{"action": t, "key": f"worker_action.{cat}.{i}"} for i, t in enumerate(WORKER_ACTIONS[cat])]
     active_ivs = [{"action_label": i["action_label"], "start_time": i["start_time"]}
                   for i in svc.repo.interventions.values() if i["crew_id"] == crew_id and i["status"] == "active"]
     return {

@@ -6,7 +6,7 @@
   "url": "https://www.cdc.gov/niosh/docs/2016-106/",
   "license": "Work of the U.S. federal government; not subject to copyright in the United States.",
   "limits": {
-    "units": "degC-WBGT, 1-hour time-weighted average; M = metabolic rate in watts",
+    "units": "°C-WBGT, 1-hour time-weighted average; M = metabolic rate in watts",
     "REL": {
       "label": "Recommended Exposure Limit (acclimatized workers)",
       "equation": "REL = 56.7 - 11.5 * log10(M)",
@@ -41,7 +41,7 @@
     ]
   },
   "clothing_adjustment_factors": {
-    "source": "Clothing adjustment values (degC-WBGT added to measured WBGT) reproduced in NIOSH 2016 and the OSHA Technical Manual Sec. III Ch. 4, based on Bernard and co-workers. Values apply to the listed ensembles only.",
+    "source": "Clothing adjustment values (°C-WBGT added to measured WBGT) reproduced in NIOSH 2016 and the OSHA Technical Manual Sec. III Ch. 4, based on Bernard and co-workers. Values apply to the listed ensembles only.",
     "categories": {
       "standard_work_clothing": {"label": "Standard work clothing (shirt and trousers)", "caf": 0.0},
       "long_sleeved_protective": {"label": "Long-sleeved woven protective clothing", "caf": 0.0, "note": "Treated as woven work clothing (long-sleeved shirt and trousers)."},

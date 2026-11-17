@@ -1,6 +1,6 @@
 """Wet Bulb Globe Temperature (WBGT) calculation.
 
-Standard formulas (ISO 7243; NIOSH 2016), all temperatures in degC:
+Standard formulas (ISO 7243; NIOSH 2016), all temperatures in °C:
 
 * Outdoors with direct solar load:   WBGT = 0.7*Tnwb + 0.2*Tg + 0.1*Tdb
 * Indoors / outdoors without sun:    WBGT = 0.7*Tnwb + 0.3*Tg

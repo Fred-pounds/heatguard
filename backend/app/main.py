@@ -9,9 +9,10 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from .api.routes import alerts, assessments, crews, interventions, reports, sensors, simulation, system
-from .core.config import get_settings
+from .core.config import REPO_DIR, get_settings
 from .services.heatguard_service import HeatGuardService
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -39,6 +40,10 @@ def create_app() -> FastAPI:
     app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins, allow_methods=["*"], allow_headers=["*"])
     for module in (system, crews, sensors, assessments, alerts, interventions, simulation, reports):
         app.include_router(module.router, prefix="/api")
+    # Single-port demo: serve the Flutter Web build if it has been built
+    web = REPO_DIR / "frontend" / "build" / "web"
+    if (web / "index.html").exists():
+        app.mount("/", StaticFiles(directory=web, html=True), name="dashboard")
     return app
 
 
