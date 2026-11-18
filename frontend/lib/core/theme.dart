@@ -36,7 +36,6 @@ class HG {
       scaffoldBackgroundColor: bg,
       fontFamily: 'Roboto',
       // Bundled for offline Arabic/Urdu and Hindi worker notices
-      fontFamilyFallback: const ['NotoSansArabic', 'NotoSansDevanagari'],
       textTheme: const TextTheme(
         headlineMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: text, height: 1.2),
         headlineSmall: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: text, height: 1.25),

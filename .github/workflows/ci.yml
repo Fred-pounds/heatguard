@@ -32,6 +32,21 @@ jobs:
         working-directory: firebase
         run: firebase emulators:exec --only database --project demo-heatguard "cd ../backend && python -m pytest app/tests/test_firebase_emulator.py -q"
 
+  worker_app:
+    name: Worker app analyze, test & web build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - working-directory: worker_app
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test
+          flutter build web --release --base-href /worker/
+
   frontend:
     name: Flutter analyze & test
     runs-on: ubuntu-latest

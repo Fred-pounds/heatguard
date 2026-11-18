@@ -8,6 +8,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -26,6 +27,11 @@ async def lifespan(app: FastAPI):
     service.start_background()
     yield
     await service.shutdown()
+
+
+def _newest_build(project):
+    candidates = [d for d in (project / "build" / "web", project / "dist") if (d / "main.dart.js").exists()]
+    return max(candidates, key=lambda d: (d / "main.dart.js").stat().st_mtime, default=None)
 
 
 def create_app() -> FastAPI:
@@ -48,15 +54,23 @@ def create_app() -> FastAPI:
         return response
     for module in (system, crews, sensors, assessments, alerts, interventions, simulation, reports, workers):
         app.include_router(module.router, prefix="/api")
-    # Single-port demo: serve the Flutter Web build if it has been built
-    # Serve whichever dashboard is newest: a local Flutter build (frontend/build/web) or the prebuilt
-    # copy committed in frontend/dist. A stale local build must never hide an updated dist after `git pull`.
-    candidates = [d for d in (REPO_DIR / "frontend" / "build" / "web", REPO_DIR / "frontend" / "dist")
-                  if (d / "main.dart.js").exists()]
-    web = max(candidates, key=lambda d: (d / "main.dart.js").stat().st_mtime, default=None)
+    # Single-port demo. Two separate Flutter apps are served from the same server:
+    #   /worker/  the worker app that workers carry (worker_app/), also buildable for Android and iOS
+    #   /         the supervisor / OHS dashboard (frontend/)
+    # For each, serve whichever build is newest: a local build (build/web) or the prebuilt copy committed in
+    # dist/. A stale local build must never hide an updated dist after `git pull`.
+    worker = _newest_build(REPO_DIR / "worker_app")
+    app.state.worker_app_dir = str(worker) if worker else None
+    if worker is not None:
+        @app.get("/worker", include_in_schema=False)
+        async def worker_slash():
+            return RedirectResponse("/worker/")
+
+        app.mount("/worker", StaticFiles(directory=worker, html=True), name="worker_app")
+    web = _newest_build(REPO_DIR / "frontend")
     app.state.dashboard_dir = str(web) if web else None
     if web is not None:
-        logging.getLogger("heatguard").info("Serving dashboard from %s", web)
+        logging.getLogger("heatguard").info("Serving dashboard from %s and worker app from %s", web, worker)
         app.mount("/", StaticFiles(directory=web, html=True), name="dashboard")
     return app
 

@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import 'app/shell.dart';
 import 'core/theme.dart';
 import 'features/demo/demo_guide.dart';
-import 'features/worker/worker_page.dart';
 import 'providers/app_state.dart';
 
 void main() {
@@ -28,10 +27,6 @@ class HeatGuardApp extends StatelessWidget {
         theme: HG.theme(),
         initialRoute: '/',
         onGenerateRoute: (settings) {
-          final name = settings.name ?? '/';
-          if (name.startsWith('/worker')) {
-            return MaterialPageRoute(settings: settings, builder: (_) => const WorkerPage());
-          }
           return MaterialPageRoute(settings: settings, builder: (_) => const Shell());
         },
       ),

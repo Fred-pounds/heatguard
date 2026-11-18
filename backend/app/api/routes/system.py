@@ -16,7 +16,8 @@ router = APIRouter(tags=["system"])
 
 @router.get("/health")
 async def health(request: Request, svc: HeatGuardService = Depends(get_service)):
-    return {**svc.health(), "dashboard_dir": getattr(request.app.state, "dashboard_dir", None)}
+    return {**svc.health(), "dashboard_dir": getattr(request.app.state, "dashboard_dir", None),
+            "worker_app_dir": getattr(request.app.state, "worker_app_dir", None)}
 
 
 @router.get("/meta")

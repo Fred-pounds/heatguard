@@ -53,11 +53,15 @@ mornings and summer afternoons on site.
 | **Worker health (OHS role): consented signals and escalations** | |
 | ![Worker health](docs/screenshots/worker-health.png) | |
 
-<img src="docs/screenshots/worker-arabic.png" alt="Worker app in Arabic" width="260" align="right">
+**HeatGuard Worker app** (`worker_app/`) is a separate app that workers carry with them. It is not part of the
+supervisor dashboard. It runs in any phone browser (and can be added to the home screen) and builds as an Android
+or iOS app from the same code. Workers choose their language (English, Arabic, Urdu or Hindi; draft translations
+with right-to-left layout), crew and optional badge once. The app remembers them and opens on **Today**: the heat
+level, what to do now and the midday break. **My health** has opt-in wearable sharing with consent and deletion.
+**Emergency** has a one-tap 998 call, warning signs, first steps and "I feel unwell / report a co-worker". It
+alerts the device when the level rises.
 
-**Worker app**: a plain-language notice on a phone, in English, Arabic, Urdu or Hindi (draft translations, with
-right-to-left layout). It includes optional wearable sharing with consent, an "I feel unwell / report a co-worker"
-button, and phone notifications when the level rises.
+![HeatGuard Worker app: crew selection, Today, My health, Emergency, Arabic](docs/screenshots/worker-app.png)
 
 > ⚠️ **All sensor data in this prototype are SIMULATED** by a built-in synthetic sensing station and labelled as
 > such throughout the UI, API and CSV exports. No physical hardware is required.
@@ -75,7 +79,7 @@ button, and phone notifications when the level rises.
 | **Alerts** | Duplicate suppression, severity escalation with re-acknowledgement, escalation of unacknowledged alerts, no auto-clear (sustained improvement → supervisor review) |
 | **Interventions** | Hydration / cooling break / workload reduction / rotation / shift change / relocation, with optional context changes, immediate reassessment, follow-up timeline and outcome |
 | **Dashboard** | Flutter Web (Material 3, Provider, fl_chart): Overview, Live Monitoring, Crew Management, Alerts, Interventions, **Simulation Lab**, Reports (with evaluation and CSV), Settings (methodology and governance) |
-| **Worker view** | Mobile-friendly, crew-only, plain language, ready for translations |
+| **Worker app** | Separate Flutter app (`worker_app/`) for web, Android and iOS: onboarding, Today / My health / Emergency tabs, 4 languages with RTL, consent, symptom reports, 998 call, device alerts |
 | **Persistence** | Firebase Realtime Database via a repository layer, or a local JSON store when no credentials are present; write-behind queue survives outages |
 | **Evaluation** | 13 repeatable synthetic cases compared with ground truth: lead time, false/missed alerts, false-safe minutes, completeness, stale detection, recovery |
 
@@ -98,8 +102,9 @@ pip install -r requirements.txt
 python -m uvicorn app.main:app --port 8000
 ```
 
-Open **http://localhost:8000** (worker view: **http://localhost:8000/#/worker**). A prebuilt dashboard ships in
-`frontend/dist`, so Flutter is only needed if you change the frontend.
+Open **http://localhost:8000** for the supervisor dashboard and **http://localhost:8000/worker/** for the worker
+app. Prebuilt copies of both ship in `frontend/dist` and `worker_app/dist`, so Flutter is only needed if you change
+them. With uv, use `uv pip install -r requirements.txt` instead of `pip install`.
 
 ### Requirements for development
 * Python 3.11+
@@ -111,8 +116,11 @@ Open **http://localhost:8000** (worker view: **http://localhost:8000/#/worker**)
 ./scripts/run_demo.sh
 ```
 
-This builds the dashboard if needed, installs the Python requirements and serves everything at
-**http://localhost:8000**. The worker view is at **http://localhost:8000/#/worker**.
+This installs the Python requirements (with uv or pip) and serves everything on one port: the dashboard at
+**http://localhost:8000** and the worker app at **http://localhost:8000/worker/**.
+
+**Worker app on a phone:** connect the phone to the same Wi-Fi as the laptop and open
+`http://<laptop-ip>:8000/worker/`. In the browser menu choose *Add to Home screen* to install it like an app.
 
 ### Or run the parts separately
 
@@ -135,15 +143,36 @@ flutter pub get
 flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8000/api
 ```
 
-Frontend (release build served by the backend):
+Worker app (development):
 
 ```bash
-cd frontend
-flutter build web --release --no-web-resources-cdn
+cd worker_app
+flutter pub get
+flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8000/api
 ```
 
-The backend serves `frontend/build/web` when it exists, otherwise the committed `frontend/dist`. After changing the frontend, refresh `frontend/dist` with the new build. `--no-web-resources-cdn` bundles CanvasKit,
-and the Roboto font is bundled too, so the demo works without internet.
+Release web builds of both apps, served by the backend:
+
+```bash
+./scripts/build_web.sh
+```
+
+This builds `frontend` (served at `/`) and `worker_app` with `--base-href /worker/` (served at `/worker/`), and
+refreshes their committed `dist` folders. For each app the backend serves whichever of `build/web` and `dist` is
+newer. CanvasKit and the fonts (Roboto, Noto Sans Arabic and Devanagari) are bundled, so the demo works offline.
+
+Worker app as an Android or iOS app (needs the Android SDK or Xcode on your machine):
+
+```bash
+cd worker_app && flutter build apk --dart-define=API_BASE_URL=http://<laptop-ip>:8000/api
+```
+
+```bash
+cd worker_app && flutter build ios --dart-define=API_BASE_URL=http://<laptop-ip>:8000/api
+```
+
+The server address can also be changed in the app under **Settings → Server address**. Plain HTTP to a local
+demo server is allowed in the Android and iOS projects; use HTTPS for any real deployment.
 
 ### Tests
 
@@ -152,14 +181,18 @@ cd backend && python -m pytest app/tests -q          # 42 unit, API and evaluati
 ```
 
 ```bash
-cd frontend && flutter analyze && flutter test        # static analysis + widget/unit tests
+cd frontend && flutter analyze && flutter test        # dashboard: static analysis + unit tests
+```
+
+```bash
+cd worker_app && flutter analyze && flutter test      # worker app: static analysis + unit tests
 ```
 
 ```bash
 cd firebase && firebase emulators:exec --only database --project demo-heatguard "cd ../backend && python -m pytest app/tests/test_firebase_emulator.py -q"
 ```
 
-CI (GitHub Actions) runs all three plus the Docker build on every push.
+CI (GitHub Actions) runs all of these plus the Docker build on every push.
 
 ## Firebase Realtime Database (optional)
 
@@ -211,7 +244,7 @@ python simulator/simulator.py --worksite ws_saadiyat_tower --scenario increasing
 ```
 heatguard/
 ├── backend/app/
-│   ├── main.py                    FastAPI app (+ serves the dashboard build)
+│   ├── main.py                    FastAPI app (+ serves the dashboard at / and the worker app at /worker/)
 │   ├── api/routes/                simulation, sensors, assessments, alerts, crews, interventions, reports, system
 │   ├── core/                      config (env vars), security (demo roles, ingest key)
 │   ├── guidelines/niosh_2016.json documented assessment configuration
@@ -223,12 +256,13 @@ heatguard/
 │   ├── repositories/              repository + Firebase / local JSON backends
 │   └── tests/
 ├── simulator/                     heatguard_sim (physics, scenarios, station) + standalone simulator.py
-├── frontend/lib/                  app shell, core (theme, severity, l10n), models, services, providers,
-│                                  widgets, features/{overview,monitoring,crews,alerts,interventions,
-│                                  simulation,reports,settings,worker}
+├── frontend/lib/                  supervisor / OHS dashboard: app shell, core, models, services, providers,
+│                                  widgets, features/{overview,monitoring,crews,alerts,interventions,health,
+│                                  simulation,reports,settings,demo}
+├── worker_app/                    HeatGuard Worker app (web, Android, iOS): lib/{core,l10n,ui}, android/, ios/, web/
 ├── firebase/                      database.rules.json, firebase.json
 ├── docs/                          architecture, risk_methodology, data_governance, evaluation, demo_script, screenshots
-├── scripts/run_demo.sh
+├── scripts/run_demo.sh, build_web.sh
 ├── Dockerfile, render.yaml        container + one-click hosted deploy
 └── .github/workflows/ci.yml       backend, frontend, Firebase-emulator and Docker checks
 ```

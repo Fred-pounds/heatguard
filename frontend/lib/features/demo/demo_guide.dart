@@ -5,6 +5,7 @@ import '../../app/shell.dart';
 import '../../core/theme.dart';
 import '../../providers/app_state.dart';
 import '../../services/api_client.dart';
+import '../../services/worker_link.dart';
 import '../../widgets/common.dart';
 import '../reports/reports_page.dart';
 
@@ -249,10 +250,10 @@ final demoSteps = <DemoStep>[
     },
   ),
   DemoStep(
-    'Worker view',
-    '"Workers get their crew\'s notice in English, Arabic, Urdu or Hindi, can opt in or out of wearable sharing, and can report symptoms. No tracking."',
-    'Open worker view',
-    (ctx, api, nav) async => Navigator.of(ctx).pushNamed('/worker'),
+    'Worker app',
+    '"Workers carry their own app, separate from this dashboard: on the phone browser or as an Android or iOS app. They see their crew\'s heat level in English, Arabic, Urdu or Hindi, choose whether to share wearable signals, report feeling unwell and call 998. No tracking."',
+    'Open worker app',
+    (ctx, api, nav) async => openWorkerApp(),
   ),
 ];
 

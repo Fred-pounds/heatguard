@@ -7,6 +7,7 @@ import '../features/alerts/alerts_page.dart';
 import '../features/crews/crews_page.dart';
 import '../features/demo/demo_guide.dart';
 import '../features/health/worker_health_page.dart';
+import '../services/worker_link.dart';
 import '../features/interventions/interventions_page.dart';
 import '../features/monitoring/monitoring_page.dart';
 import '../features/overview/overview_page.dart';
@@ -281,7 +282,7 @@ class _Header extends StatelessWidget {
           tooltip: 'Account',
           icon: CircleAvatar(radius: 15, backgroundColor: state.isOhs ? const Color(0xFFDCEFEA) : HG.subtle, child: Text(state.isOhs ? 'OH' : 'SV', style: const TextStyle(color: HG.text, fontSize: 11.5, fontWeight: FontWeight.w600))),
           onSelected: (v) {
-            if (v == 'worker') Navigator.of(context).pushNamed('/worker');
+            if (v == 'worker') openWorkerApp();
             if (v == 'settings') nav.go(Nav.settings);
             if (v == 'role') state.setRole(state.isOhs ? 'supervisor' : 'ohs');
           },
@@ -289,7 +290,7 @@ class _Header extends StatelessWidget {
             PopupMenuItem(enabled: false, child: Text(state.isOhs ? 'OHS officer (demo role)' : 'Site Supervisor (demo role)')),
             const PopupMenuDivider(),
             PopupMenuItem(value: 'role', child: Text(state.isOhs ? 'Switch to supervisor' : 'Switch to OHS role (health data)')),
-            const PopupMenuItem(value: 'worker', child: Text('Open worker view')),
+            const PopupMenuItem(value: 'worker', child: Text('Open worker app (new tab)')),
             const PopupMenuItem(value: 'settings', child: Text('Methodology & governance')),
           ],
         ),

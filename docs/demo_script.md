@@ -7,7 +7,7 @@ through by hand; the steps work the same way.
 **Before judges arrive**
 1. Start HeatGuard (`./scripts/run_demo.sh`, or the deployed link) and open it in a desktop browser at 1440 px wide or more.
 2. Open **Demo guide** and press **Prepare**. This resets the simulation, clears history and builds 30 minutes of readings.
-3. Optional: open the worker view on a phone: `<url>/#/worker`, then choose *Concrete Crew A*.
+3. Optional: open the worker app on a phone: `<url>/worker/` (same Wi-Fi as the laptop), choose a language, *Concrete Crew A* and badge *CA-02*.
 
 | # | Step | Guide button | What it shows |
 |---|---|---|---|
@@ -27,7 +27,7 @@ through by hand; the steps work the same way.
 | 14 | Clean the station | Clean station | Assessments resume; battery failure is handled the same way |
 | 15 | UAE midday break | Jump to 12:35 in July | Compliance flag and "Midday break" alert: no outdoor work in direct sun 12:30-15:00, 15 Jun-15 Sep |
 | 16 | Show the evaluation | Run evaluation | 13 synthetic cases (incl. dust, battery, worker strain, midday break), 35 checks, 0 "false safe" minutes |
-| 17 | Worker view | Open worker view | Crew-only, plain-language notice with water, rest and emergency guidance |
+| 17 | Worker app | Open worker app | The separate app workers carry: heat level, what to do, My health (consent), Emergency (998 call) |
 
 **Back-up:** if the network is slow, every step still works offline on a laptop: the dashboard and fonts are
 bundled and no external APIs are used. In the **Simulation Lab**, **+1 min** advances time manually.

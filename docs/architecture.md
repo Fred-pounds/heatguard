@@ -22,8 +22,8 @@
  │   reports_service / evaluation_service                                                 │
  └───────────────────────────────▲────────────────────────────────────────────────────────┘
                                  │ REST (polled every 2 s)
-                     FLUTTER WEB APP (frontend/lib)
-                 Supervisor / OHS dashboard   Worker app (/#/worker, EN/AR/UR/HI)
+        DASHBOARD (frontend/, served at /)        WORKER APP (worker_app/, served at /worker/)
+        Supervisor / OHS roles, Flutter Web       Flutter: web + Android + iOS, EN/AR/UR/HI
 ```
 
 ## Components
@@ -43,7 +43,8 @@
 | Orchestration | `services/heatguard_service.py` | Ingestion pipeline, staleness detection, events, health, async loop |
 | Persistence | `repositories/` | Repository layer; Firebase or local JSON; queued writes survive outages |
 | Reports & evaluation | `services/reports_service.py`, `services/evaluation_service.py` | Metrics, CSV export, headless scenario tests |
-| Frontend | `frontend/lib` | Provider state (`providers/app_state.dart`) polling the REST API; feature pages under `features/` |
+| Dashboard | `frontend/lib` | Supervisor / OHS app. Provider state (`providers/app_state.dart`) polling the REST API; feature pages under `features/` |
+| Worker app | `worker_app/lib` | Separate app carried by workers (web, Android, iOS). `core/state.dart` polls the worker endpoints every 3 s with the `worker` role and remembers language, crew and badge on the device; `ui/` has onboarding and the Today, My health and Emergency tabs |
 
 ## Timing model
 
