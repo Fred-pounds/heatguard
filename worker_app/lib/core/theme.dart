@@ -1,4 +1,4 @@
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/material.dart';
 
 /// Calm, neutral design: white surfaces, one navy accent, and colour only in small level indicators.
 class T {

@@ -10,6 +10,10 @@
 include: package:flutter_lints/flutter.yaml
 
 analyzer:
+  errors:
+    # The app imports package:flutter/material.dart so it builds on older Flutter versions too.
+    # Flutter 3.47+ marks that import as deprecated in favour of package:material_ui; it still works.
+    deprecated_member_use: ignore
   exclude:
     - build/**
     - android/**
@@ -33,3 +37,4 @@ linter:
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options
+

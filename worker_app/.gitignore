@@ -46,3 +46,6 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Not committed: lets `flutter pub get` choose package versions that match the installed Flutter SDK.
+pubspec.lock
