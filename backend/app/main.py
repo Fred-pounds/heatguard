@@ -38,6 +38,14 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins, allow_methods=["*"], allow_headers=["*"])
+
+    @app.middleware("http")
+    async def no_stale_dashboard(request, call_next):
+        """Make browsers revalidate dashboard files so an updated build is picked up on a normal refresh."""
+        response = await call_next(request)
+        if not request.url.path.startswith("/api"):
+            response.headers["Cache-Control"] = "no-cache"
+        return response
     for module in (system, crews, sensors, assessments, alerts, interventions, simulation, reports):
         app.include_router(module.router, prefix="/api")
     # Single-port demo: serve the Flutter Web build if it has been built
