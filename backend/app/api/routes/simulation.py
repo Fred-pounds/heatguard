@@ -121,6 +121,8 @@ async def reset(body: ResetRequest, svc: HeatGuardService = Depends(get_service)
         svc._site_state.clear()  # noqa: SLF001
         svc._last_valid.clear()  # noqa: SLF001
         svc._crew_counter.clear()  # noqa: SLF001
+        # Take a first reading immediately so the empty store is never mistaken for a station outage
+        svc.process_batch(svc.sim.poll_all())
     svc._event("simulation_reset", body.worksite_id, "Simulation reset" + (" and operational history cleared" if body.clear_history else ""))  # noqa: SLF001
     return _status(svc)
 

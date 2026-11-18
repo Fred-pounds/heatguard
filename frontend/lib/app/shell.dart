@@ -5,6 +5,7 @@ import '../core/format.dart';
 import '../core/theme.dart';
 import '../features/alerts/alerts_page.dart';
 import '../features/crews/crews_page.dart';
+import '../features/demo/demo_guide.dart';
 import '../features/interventions/interventions_page.dart';
 import '../features/monitoring/monitoring_page.dart';
 import '../features/overview/overview_page.dart';
@@ -12,6 +13,7 @@ import '../features/reports/reports_page.dart';
 import '../features/settings/settings_page.dart';
 import '../features/simulation/simulation_lab_page.dart';
 import '../providers/app_state.dart';
+import '../widgets/assessment_dialog.dart';
 import '../widgets/common.dart';
 
 class NavController extends ChangeNotifier {
@@ -80,9 +82,22 @@ class Shell extends StatelessWidget {
                   ),
       ),
     ]);
+    final demo = context.watch<DemoController>();
+    final main = demo.open
+        ? Row(children: [
+            Expanded(child: body),
+            if (demo.crewId != null)
+              Container(
+                width: 460,
+                decoration: const BoxDecoration(color: Colors.white, border: Border(left: BorderSide(color: HG.border))),
+                child: CrewAssessmentSheet(crewId: demo.crewId!, onClose: demo.hideCrew),
+              ),
+            const DemoPanel(),
+          ])
+        : body;
     return Scaffold(
       drawer: wide ? null : const Drawer(width: 248, backgroundColor: HG.navy, child: _Sidebar()),
-      body: wide ? Row(children: [const SizedBox(width: 232, child: _Sidebar()), Expanded(child: body)]) : body,
+      body: wide ? Row(children: [const SizedBox(width: 232, child: _Sidebar()), Expanded(child: main)]) : main,
     );
   }
 }
@@ -96,7 +111,8 @@ class _Sidebar extends StatelessWidget {
     final unack = (state.counts['unacknowledged_alerts'] as num?)?.toInt() ?? 0;
     final health = state.health;
     final dbOk = '${health['database_status']}' == 'ok';
-    final allOk = state.dataIsLive && dbOk && state.simulation['state'] == 'running';
+    final sensorsOk = state.worksites.every((w) => w.sensorStatus == 'ok');
+    final allOk = state.dataIsLive && dbOk && sensorsOk && state.simulation['state'] == 'running';
     return Container(
       color: HG.navy,
       child: SafeArea(
@@ -138,11 +154,19 @@ class _Sidebar extends StatelessWidget {
           Tooltip(
             message: 'Backend: ${state.dataIsLive ? 'online' : 'unavailable'}\n'
                 'Database: ${humanize('${health['database_backend'] ?? '-'}')} (${health['database_status'] ?? '-'})\n'
-                'Simulator: ${state.simulation['state'] ?? '-'}',
+                'Simulator: ${state.simulation['state'] ?? '-'}\n'
+                'Sensors: ${state.worksites.map((w) => '${w.name.split(' ').first} ${w.sensorStatus}').join(', ')}',
             child: Padding(
               padding: const EdgeInsets.fromLTRB(24, 12, 20, 20),
               child: StatusDot(allOk ? 'ok' : (state.dataIsLive ? 'degraded' : 'offline'),
-                  label: allOk ? 'All systems normal' : (state.dataIsLive ? 'Partially degraded' : 'Backend unavailable'), dark: true),
+                  label: allOk
+                      ? 'All systems normal'
+                      : !state.dataIsLive
+                          ? 'Backend unavailable'
+                          : !sensorsOk
+                              ? 'Sensor problem'
+                              : 'Partially degraded',
+                  dark: true),
             ),
           ),
         ]),
@@ -211,7 +235,16 @@ class _Header extends StatelessWidget {
             if (!narrow) Text(item.subtitle, style: Theme.of(context).textTheme.bodySmall, overflow: TextOverflow.ellipsis),
           ]),
         ),
-        if (!narrow) ...[const SimulatedBadge(), const SizedBox(width: 16)],
+        if (!narrow) ...[const SimulatedBadge(), const SizedBox(width: 12)],
+        Builder(builder: (context) {
+          final demo = context.watch<DemoController>();
+          return Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: demo.open
+                ? FilledButton.tonalIcon(onPressed: demo.toggle, icon: const Icon(Icons.slideshow_outlined, size: 18), label: const Text('Demo guide'))
+                : OutlinedButton.icon(onPressed: demo.toggle, icon: const Icon(Icons.slideshow_outlined, size: 18), label: const Text('Demo guide')),
+          );
+        }),
         if (state.worksites.isNotEmpty && !narrow)
           DropdownButtonHideUnderline(
             child: DropdownButton<String>(

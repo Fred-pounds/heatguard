@@ -13,6 +13,11 @@ import '../../widgets/common.dart';
 
 class ReportsPage extends StatefulWidget {
   const ReportsPage({super.key});
+
+  /// Shared so other parts of the app (e.g. the demo guide) can open a specific view and force a reload.
+  static final tab = ValueNotifier<int>(0);
+  static final reload = ValueNotifier<int>(0);
+
   @override
   State<ReportsPage> createState() => _ReportsPageState();
 }
@@ -24,7 +29,25 @@ class _ReportsPageState extends State<ReportsPage> {
   bool loading = false;
   bool evaluating = false;
   DateTime? fetchedAt;
-  int tab = 0;
+  int get tab => ReportsPage.tab.value;
+
+  @override
+  void initState() {
+    super.initState();
+    ReportsPage.tab.addListener(_onTab);
+    ReportsPage.reload.addListener(_load);
+  }
+
+  @override
+  void dispose() {
+    ReportsPage.tab.removeListener(_onTab);
+    ReportsPage.reload.removeListener(_load);
+    super.dispose();
+  }
+
+  void _onTab() {
+    if (mounted) setState(() {});
+  }
 
   Future<void> _load() async {
     if (loading) return;
@@ -83,7 +106,7 @@ class _ReportsPageState extends State<ReportsPage> {
             ButtonSegment(value: 2, label: Text('Export')),
           ],
           selected: {tab},
-          onSelectionChanged: (v) => setState(() => tab = v.first),
+          onSelectionChanged: (v) => ReportsPage.tab.value = v.first,
         ),
         const Spacer(),
         IconButton(

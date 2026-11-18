@@ -131,12 +131,12 @@ class _Conditions extends StatelessWidget {
     final stale = status == 'stale' || status == 'offline';
 
     Widget metric(String label, double? v, String unit, {String? field, bool big = false}) {
-      final bad = r != null && field != null && r.issues.any((i) => i['field'] == field);
+      final bad = (r != null && field != null && r.issues.any((i) => i['field'] == field)) || (r != null && field == null && v == null);
       final over = r != null && field != null && r.overrides.contains(field);
       return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(label, style: Theme.of(context).textTheme.labelMedium),
         const SizedBox(height: 4),
-        Text(bad ? 'No valid data' : '${fmtNum(v)}$unit',
+        Text(bad ? (field == null ? 'Cannot calculate' : 'No valid data') : '${fmtNum(v)}$unit',
             style: TextStyle(fontSize: bad ? 15 : (big ? 30 : 22), fontWeight: FontWeight.w700, color: bad ? HG.unavailable : HG.text, height: 1.15)),
         if (over) const Padding(padding: EdgeInsets.only(top: 4), child: Pill('Manual', color: HG.accent)),
       ]);

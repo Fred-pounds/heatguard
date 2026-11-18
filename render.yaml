@@ -1,0 +1,14 @@
+# One-click deploy on Render (https://render.com): New > Blueprint > select this repository.
+services:
+  - type: web
+    name: heatguard
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: HEATGUARD_STORAGE
+        value: local
+      - key: HEATGUARD_SIM_AUTOSTART
+        value: "true"
+      # Optional Firebase persistence: set HEATGUARD_STORAGE=firebase, add FIREBASE_DATABASE_URL,
+      # and upload the service-account JSON as a secret file whose path goes in FIREBASE_CREDENTIALS.

@@ -25,7 +25,7 @@ Future<void> showCrewAssessment(BuildContext context, String crewId) {
           child: SizedBox(
             width: MediaQuery.sizeOf(context).width.clamp(320, 620).toDouble(),
             height: double.infinity,
-            child: _Sheet(crewId: crewId),
+            child: CrewAssessmentSheet(crewId: crewId, onClose: () => Navigator.pop(context)),
           ),
         ),
       ),
@@ -35,9 +35,11 @@ Future<void> showCrewAssessment(BuildContext context, String crewId) {
   );
 }
 
-class _Sheet extends StatelessWidget {
-  const _Sheet({required this.crewId});
+/// Crew assessment panel. Used as a modal side sheet, or docked inline next to the demo guide.
+class CrewAssessmentSheet extends StatelessWidget {
+  const CrewAssessmentSheet({super.key, required this.crewId, required this.onClose});
   final String crewId;
+  final VoidCallback onClose;
   @override
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
@@ -60,7 +62,7 @@ class _Sheet extends StatelessWidget {
               ),
             ]),
           ),
-          IconButton(tooltip: 'Close', icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+          IconButton(tooltip: 'Close', icon: const Icon(Icons.close), onPressed: onClose),
         ]),
       ),
       Expanded(

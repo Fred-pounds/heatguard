@@ -1,16 +1,42 @@
 # HeatGuard
 
+[![CI](https://github.com/Fred-pounds/heatguard/actions/workflows/ci.yml/badge.svg)](https://github.com/Fred-pounds/heatguard/actions/workflows/ci.yml)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Fred-pounds/heatguard)
+
 **Explainable occupational heat-risk early warning and intervention system** (hackathon prototype)
 
 > *From environmental monitoring to proactive worker protection.*
 
-HeatGuard combines environmental heat measurements (WBGT), workload, clothing and acclimatization to produce
-**explainable, guideline-based heat-risk assessments**. It raises alerts with recommended protective actions,
-tracks the interventions supervisors take, and reassesses afterwards. It is decision support only: it does not
-diagnose heat illness or clear workers to resume work.
+![HeatGuard overview](docs/screenshots/overview.png)
+
+## The problem
+
+Outdoor and industrial workers in hot climates, on construction sites, farms, ports and factories, face heat
+stress every day. Supervisors usually see a temperature at best. That doesn't tell them whether a *specific crew*,
+doing *specific work* in *specific clothing*, is still within safe limits, or what to do about it.
+
+## What HeatGuard does
+
+1. **Measures** heat stress as WBGT, the standard occupational heat index (here from a simulated station).
+2. **Assesses each crew** against documented NIOSH limits, taking workload, clothing and acclimatization into account.
+3. **Explains** every result in plain language: why, what to do, and what data were used or missing.
+4. **Alerts and tracks action:** acknowledgement, protective interventions, follow-up reassessment.
+5. **Never fakes safety:** missing, invalid or stale data is shown as "assessment unavailable", never as green.
+
+| Explained assessment and guided demo | Intervention tracking |
+|---|---|
+| ![Demo guide](docs/screenshots/demo-guide.png) | ![Intervention](docs/screenshots/intervention.png) |
+| **Sensor failure: never shown as safe** | **Synthetic evaluation** |
+| ![Sensor failure](docs/screenshots/sensor-failure.png) | ![Evaluation](docs/screenshots/evaluation.png) |
+
+<img src="docs/screenshots/worker.png" alt="Worker view" width="260" align="right">
+
+**Worker view**: a crew-only, plain-language notice on a phone. It shows no individual data and does no tracking.
 
 > ⚠️ **All sensor data in this prototype are SIMULATED** by a built-in synthetic sensing station and labelled as
 > such throughout the UI, API and CSV exports. No physical hardware is required.
+
+<br clear="right">
 
 ## What's inside
 
@@ -26,6 +52,14 @@ diagnose heat illness or clear workers to resume work.
 | **Worker view** | Mobile-friendly, crew-only, plain language, ready for translations |
 | **Persistence** | Firebase Realtime Database via a repository layer, or a local JSON store when no credentials are present; write-behind queue survives outages |
 | **Evaluation** | 8 repeatable synthetic cases compared with ground truth: lead time, false/missed alerts, false-safe minutes, completeness, stale detection, recovery |
+
+## Try it
+
+* **Guided demo:** click **Demo guide** in the top bar. It walks through the 5-minute storyline with one-click
+  steps (see [docs/demo_script.md](docs/demo_script.md)).
+* **Hosted link for judges:** click *Deploy to Render* above, or run the Docker image anywhere
+  (`docker build -t heatguard . && docker run -p 8000:8000 heatguard`). The free Render plan sleeps when idle and
+  resets its demo data on restart.
 
 ## Quick start
 
@@ -88,9 +122,18 @@ and the Roboto font is bundled too, so the demo works without internet.
 ### Tests
 
 ```bash
-cd backend && python -m pytest app/tests -q    # 33 tests
-cd frontend && flutter analyze                  # static analysis
+cd backend && python -m pytest app/tests -q          # unit, API and evaluation tests
 ```
+
+```bash
+cd frontend && flutter analyze && flutter test        # static analysis + widget/unit tests
+```
+
+```bash
+cd firebase && firebase emulators:exec --only database --project demo-heatguard "cd ../backend && python -m pytest app/tests/test_firebase_emulator.py -q"
+```
+
+CI (GitHub Actions) runs all three plus the Docker build on every push.
 
 ## Firebase Realtime Database (optional)
 
@@ -102,8 +145,20 @@ cd frontend && flutter analyze                  # static analysis
    FIREBASE_CREDENTIALS=/absolute/path/to/service-account.json
    FIREBASE_DATABASE_URL=https://<project>-default-rtdb.<region>.firebasedatabase.app
    ```
-4. Deploy the rules: `cd firebase && firebase deploy --only database`. To use the emulator instead, run
-   `firebase emulators:start --only database` and set `FIREBASE_DATABASE_URL` to the emulator URL.
+4. Deploy the rules: `cd firebase && firebase deploy --only database`.
+
+**Emulator (no Firebase account needed):** run `firebase emulators:start --only database --project demo-heatguard`
+inside `firebase/`, then start the backend with:
+
+```bash
+HEATGUARD_STORAGE=firebase FIREBASE_DATABASE_EMULATOR_HOST=127.0.0.1:9000 FIREBASE_DATABASE_URL="http://127.0.0.1:9000?ns=demo-heatguard" python -m uvicorn app.main:app --port 8000
+```
+
+Verified against the emulator:
+* All collections are written.
+* State reloads after a restart.
+* Writes queue during a database outage and flush on recovery.
+* The security rules deny unauthenticated reads.
 
 Without credentials HeatGuard falls back to `backend/data/local_store.json`, which mirrors the same tree.
 If Firebase is unreachable, writes queue up. The sidebar shows the queue as "unsynced", and the Simulation Lab
@@ -146,8 +201,10 @@ heatguard/
 │                                  widgets, features/{overview,monitoring,crews,alerts,interventions,
 │                                  simulation,reports,settings,worker}
 ├── firebase/                      database.rules.json, firebase.json
-├── docs/                          architecture, risk_methodology, data_governance, evaluation, demo_script
-└── scripts/run_demo.sh
+├── docs/                          architecture, risk_methodology, data_governance, evaluation, demo_script, screenshots
+├── scripts/run_demo.sh
+├── Dockerfile, render.yaml        container + one-click hosted deploy
+└── .github/workflows/ci.yml       backend, frontend, Firebase-emulator and Docker checks
 ```
 
 ## Documentation
@@ -177,4 +234,5 @@ heatguard/
 - [x] Structured, explained assessments; missing data → incomplete; sensor and network failure handled safely
 - [x] Alerts generated, acknowledged, escalated, resolved with notes; interventions recorded with follow-up
 - [x] Live dashboard, trends, interactive Simulation Lab, reports, CSV export, SIMULATED labelling
-- [x] Methodology documentation; 33 unit/API tests; evaluation suite (8 cases / 22 checks passing)
+- [x] Methodology documentation; backend, frontend and Firebase-emulator tests in CI; evaluation suite (8 cases / 22 checks passing)
+- [x] Guided in-app demo mode; Docker image and Render blueprint for a hosted link

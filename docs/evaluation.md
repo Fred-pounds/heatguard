@@ -58,7 +58,7 @@ was alerted at minute 57, 24 minutes before its REL was exceeded at minute 81. T
 
 ## Unit tests
 
-`cd backend && python -m pytest app/tests -q` runs 33 tests covering WBGT formulas and formula selection,
+`cd backend && python -m pytest app/tests -q` runs 33 tests (plus a Firebase-emulator integration test when the emulator is running) covering WBGT formulas and formula selection,
 the NIOSH equations, category boundaries, work/rest effects, RAL for unknown acclimatization, clothing
 adjustment, rolling-mean retention, missing, invalid, implausible and stale data, incomplete context, duplicate
 suppression, no auto-clear, resolution rules, site-level data alerts, intervention reassessment, edge

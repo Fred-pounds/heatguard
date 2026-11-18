@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'app/shell.dart';
 import 'core/theme.dart';
+import 'features/demo/demo_guide.dart';
 import 'features/worker/worker_page.dart';
 import 'providers/app_state.dart';
 
@@ -19,6 +20,7 @@ class HeatGuardApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AppState()..start()),
         ChangeNotifierProvider(create: (_) => NavController()),
+        ChangeNotifierProvider(create: (_) => DemoController()),
       ],
       child: MaterialApp(
         title: 'HeatGuard',

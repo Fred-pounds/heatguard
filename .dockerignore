@@ -1,0 +1,10 @@
+**/__pycache__
+**/.pytest_cache
+backend/data
+backend/.env
+frontend/build
+frontend/.dart_tool
+frontend/lib
+frontend/test
+.git
+docs

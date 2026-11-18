@@ -4,6 +4,10 @@ Credentials are read from environment variables only:
   FIREBASE_CREDENTIALS   path to a service-account JSON file
   FIREBASE_DATABASE_URL  e.g. https://<project>-default-rtdb.<region>.firebasedatabase.app
 Never commit the service-account file.
+
+Local emulator (no credentials needed):
+  FIREBASE_DATABASE_EMULATOR_HOST=127.0.0.1:9000
+  FIREBASE_DATABASE_URL=http://127.0.0.1:9000?ns=demo-heatguard
 """
 from __future__ import annotations
 
@@ -15,13 +19,21 @@ from .base import PersistenceBackend
 class FirebaseBackend(PersistenceBackend):
     name = "firebase_rtdb"
 
-    def __init__(self, credentials_path: str, database_url: str, root: str = "/"):
+    def __init__(self, credentials_path: str | None, database_url: str, root: str = "/"):
+        import os
+
         import firebase_admin
         from firebase_admin import credentials, db
 
         if not firebase_admin._apps:  # noqa: SLF001
-            cred = credentials.Certificate(credentials_path)
-            firebase_admin.initialize_app(cred, {"databaseURL": database_url})
+            if credentials_path:
+                firebase_admin.initialize_app(credentials.Certificate(credentials_path), {"databaseURL": database_url})
+            elif os.getenv("FIREBASE_DATABASE_EMULATOR_HOST"):
+                # The Admin SDK uses emulator credentials automatically when this variable is set.
+                firebase_admin.initialize_app(options={"databaseURL": database_url, "projectId": "demo-heatguard"})
+            else:
+                raise ValueError("FIREBASE_CREDENTIALS is required unless FIREBASE_DATABASE_EMULATOR_HOST is set")
+        self.emulator = bool(os.getenv("FIREBASE_DATABASE_EMULATOR_HOST"))
         self._db = db
         self._root = root.rstrip("/") or ""
         self._last_error: str | None = None
@@ -46,4 +58,5 @@ class FirebaseBackend(PersistenceBackend):
             raise
 
     def health(self) -> dict[str, Any]:
-        return {"backend": self.name, "status": "error" if self._last_error else "ok", "last_error": self._last_error}
+        return {"backend": self.name + ("_emulator" if self.emulator else ""), "status": "error" if self._last_error else "ok",
+                "last_error": self._last_error}

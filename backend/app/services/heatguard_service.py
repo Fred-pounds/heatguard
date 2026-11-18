@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import time
 from datetime import datetime
 from statistics import mean
@@ -52,7 +53,8 @@ class NullBackend(PersistenceBackend):
 
 def build_backend(settings: Settings) -> PersistenceBackend:
     if settings.storage_backend == "firebase":
-        if not (settings.firebase_credentials and settings.firebase_database_url):
+        emulator = bool(os.getenv("FIREBASE_DATABASE_EMULATOR_HOST"))
+        if not settings.firebase_database_url or not (settings.firebase_credentials or emulator):
             log.warning("HEATGUARD_STORAGE=firebase but FIREBASE_CREDENTIALS/FIREBASE_DATABASE_URL missing; using local demo store")
         else:
             try:
