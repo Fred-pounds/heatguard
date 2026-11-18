@@ -43,6 +43,7 @@ class Scenario:
     faults: tuple[FaultEvent, ...] = ()
     network_outages: tuple[tuple[int, int], ...] = ()  # (start_min, end_min)
     noise_sd: float = 0.15  # degC sensor noise (synthetic)
+    dust_rate: float = 0.0  # fouling added per simulated minute (globe coating / wick contamination)
     sim_date: str = "2026-07-15"  # simulated calendar date (ISO), used for seasonal rules such as the UAE midday break
 
 
@@ -114,6 +115,17 @@ def _humid_coastal(t: float) -> Drivers:
     )
 
 
+def _dust_storm(t: float) -> Drivers:
+    # Shamal wind event (June): strong north-westerly wind, dust haze cuts direct sun, hot dry air.
+    frac = t / 180.0
+    return Drivers(
+        tdb=_lerp(38.0, 41.0, frac) + 0.4 * math.sin(t / 15.0),
+        rh=_lerp(22.0, 18.0, frac),
+        solar=_lerp(450.0, 300.0, frac) + 40.0 * math.sin(t / 9.0),
+        wind=_lerp(8.0, 11.0, frac) + 1.0 * math.sin(t / 6.0),
+    )
+
+
 SCENARIOS: dict[str, Scenario] = {
     s.id: s
     for s in [
@@ -180,6 +192,20 @@ SCENARIOS: dict[str, Scenario] = {
             duration_min=240,
             profile=_industrial,
             suggested_context={"workload": "heavy", "acclimatization": "acclimatized", "clothing": "cloth_coveralls"},
+        ),
+        Scenario(
+            id="dust_storm",
+            code="G",
+            name="Shamal dust storm",
+            description="June shamal: strong wind and dust. Dust coats the globe and dries the wet-bulb wick, "
+            "so readings drift. HeatGuard must detect the fouled sensor and ask for maintenance, not trust it.",
+            indoor=False,
+            start_clock="10:00",
+            sim_date="2026-06-20",
+            duration_min=180,
+            profile=_dust_storm,
+            dust_rate=0.012,
+            suggested_context={"workload": "moderate", "acclimatization": "acclimatized", "clothing": "standard_work_clothing"},
         ),
         Scenario(
             id="sensor_failure",

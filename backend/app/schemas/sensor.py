@@ -27,6 +27,8 @@ class SensorReadingIn(BaseModel):
     sim_date: str | None = Field(default=None, description="Site-local calendar date (YYYY-MM-DD)")
     scenario_id: str | None = None
     run_id: str | None = None
+    battery_pct: float | None = Field(default=None, description="Station battery level (%)")
+    dust_index: float | None = Field(default=None, description="Station dust fouling estimate, 0 clean to 1 heavily fouled")
     late_sync: bool = False
     queued_at_edge: bool = False
     ground_truth: dict | None = Field(default=None, description="Simulator-only noise-free values used for evaluation")

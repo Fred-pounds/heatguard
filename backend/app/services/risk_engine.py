@@ -32,6 +32,7 @@ CATEGORY_LABELS = {
 }
 WORKLOAD_LABELS = {"rest": "rest", "light": "light", "moderate": "moderate", "heavy": "heavy", "very_heavy": "very heavy"}
 NIOSH = "NIOSH 2016"
+PREDICTIVE_MINUTES = 30  # raise an early caution when the limit is projected within this many minutes
 SYMPTOM_ESCALATION = RecommendedAction(
     action="Escalate symptoms to qualified personnel",
     detail="Any worker reporting or showing symptoms such as dizziness, confusion, nausea, headache, cramps or fainting "
@@ -52,12 +53,39 @@ class AssessmentContext:
     rolling_mean_wbgt: float | None = None
     last_valid_category: str | None = None
     last_valid_time: str | None = None
+    trend_c_per_min: float | None = None  # WBGT trend over the last 30 simulated minutes (least squares)
 
 
 class RiskEngine:
     def __init__(self, guideline: Guideline, midday_break: MiddayBreak | None = None):
         self.g = guideline
         self.midday = midday_break
+
+    # ------------------------------------------------------------------ outlook
+    def _outlook(self, ctx: AssessmentContext, effective: float, limit: float) -> dict:
+        slope = ctx.trend_c_per_min
+        if slope is None:
+            return {"trend_c_per_hour": None, "minutes_to_limit": None, "projected_60": None,
+                    "note": "Not enough recent readings for a projection"}
+        out = {"trend_c_per_hour": round(slope * 60, 2), "projected_60": round(effective + min(slope, 0.2) * 60, 1),
+               "minutes_to_limit": None,
+               "note": "Projection of the last 30 minutes' trend, capped at 2 hours. Not a weather forecast."}
+        if slope > 0.003 and effective < limit:
+            minutes = (limit - effective) / slope
+            if minutes <= 120:
+                out["minutes_to_limit"] = int(round(minutes))
+        return out
+
+    def _midday_countdown(self, site: Worksite, r: SensorReading | None, solar: bool) -> int | None:
+        if self.midday is None or r is None or site.environment != "outdoor":
+            return None
+        date, clock = self.midday.site_date_time(r.sim_date, r.sim_clock, r.timestamp)
+        if not (date and clock) or not self.midday.season_active(date):
+            return None
+        sh, sm = (int(x) for x in self.midday.data["window_start"].split(":"))
+        ch, cm = (int(x) for x in clock.split(":"))
+        mins = (sh * 60 + sm) - (ch * 60 + cm)
+        return mins if 0 < mins <= 60 else None
 
     # ------------------------------------------------------------------ regulation
     def _regulatory_flags(self, site: Worksite, r: SensorReading | None, solar: bool) -> list[dict]:
@@ -189,6 +217,12 @@ class RiskEngine:
                     break
             category = REGIME_CATEGORY[required_regime] if required_regime else "critical"
 
+        # ---- rising-risk outlook: project the recent trend (capped at 2 h); an early caution when the limit is near
+        outlook = self._outlook(ctx, effective, l_cur)
+        predictive = False
+        if category == "routine" and outlook.get("minutes_to_limit") is not None and outlook["minutes_to_limit"] <= PREDICTIVE_MINUTES:
+            category, predictive = "caution", True
+
         limit_reason = {
             "acclimatized": "Crew recorded as acclimatized: Recommended Exposure Limit (REL) applies.",
             "not_acclimatized": "Crew not acclimatized: Recommended Alert Limit (RAL) applies.",
@@ -214,6 +248,12 @@ class RiskEngine:
         )
 
         factors = self._factors(site, crew, r, details, metabolic, clothing, solar)
+        if outlook.get("trend_c_per_hour") is not None and outlook["trend_c_per_hour"] >= 0.3:
+            when = (f"; projected to reach the limit in about {outlook['minutes_to_limit']} min"
+                    if outlook.get("minutes_to_limit") is not None else "")
+            factors.insert(1, ContributingFactor(
+                factor="Rising heat", detail=f"WBGT rising {outlook['trend_c_per_hour']:+.1f} \u00b0C per hour{when}.",
+                direction="increases_concern"))
         confidence = "reduced" if confidence_reasons else "standard"
         dq = DataQuality(
             measurement_validity=validity,
@@ -227,6 +267,22 @@ class RiskEngine:
         )
         explanation = self._explain(category, crew, details, solar, site)
         actions = self._recommend(category, crew, details, clothing, solar, site)
+        if predictive:
+            explanation += (f" Heat is rising: the limit is projected to be reached in about {outlook['minutes_to_limit']} min, "
+                            "so this is an early caution.")
+            actions.insert(0, RecommendedAction(
+                action="Plan ahead: move heavy tasks earlier",
+                detail=f"Finish strenuous work in the next {outlook['minutes_to_limit']} min or start work/rest rotation now; "
+                       "set up shade and water before the limit is reached.",
+                priority="advised", source="HeatGuard trend projection"))
+        mb = self._midday_countdown(site, r, solar)
+        if mb is not None:
+            outlook["midday_break_in_min"] = mb
+            factors.append(ContributingFactor(factor="Midday break soon", detail=f"UAE midday break starts in {mb} min (12:30).",
+                                              direction="neutral"))
+            actions.append(RecommendedAction(action="Plan for the midday break",
+                                             detail=f"Outdoor work in direct sun must stop at 12:30 (in {mb} min); schedule indoor or shaded tasks.",
+                                             priority="advised", source="UAE MoHRE midday break"))
         inputs_used["wbgt_formula"] = wb.formula
         return self._apply_regulation(Assessment(
             assessment_id=new_id("asm"),
@@ -248,6 +304,7 @@ class RiskEngine:
             data_completeness=completeness,
             inputs_used=inputs_used,
             limit_details=details,
+            outlook=outlook,
             assessment_method=(
                 f"{limit_type} for {WORKLOAD_LABELS[crew.workload]} work (~{metabolic:.0f} W) compared with effective WBGT "
                 f"(screening WBGT + clothing adjustment); category set by the work/rest regime required to stay within the limit."

@@ -71,6 +71,66 @@ def summary(svc: HeatGuardService) -> dict:
     heat_alerts = [a for a in alerts if a["alert_type"] == "heat_risk"]
     with_iv = sum(1 for a in heat_alerts if a.get("intervention_ids"))
 
+    # ---- safety & productivity (organiser measures)
+    protective = {"hydration_break", "cooling_rest_break", "workload_reduction", "work_rotation", "shift_adjustment", "relocation_cooler_area"}
+    ivs_by_id = repo.interventions
+
+    def controlled(a: dict) -> bool:
+        return any(ivs_by_id.get(i, {}).get("action") in protective for i in a.get("intervention_ids") or [])
+
+    serious = [a for a in heat_alerts if a.get("severity_level", 0) >= 2]
+    regulatory = [a for a in alerts if a["alert_type"] == "regulatory"]
+    worker_checks = [a for a in alerts if a["alert_type"] == "worker_check"]
+    escs = list(repo.escalations.values())
+    esc_ack = [s_ for e in escs if (s_ := _secs(e["created_at"], e.get("acknowledged_at"))) is not None]
+    esc_close = [s_ for e in escs if (s_ := _secs(e["created_at"], e.get("closed_at"))) is not None]
+    wc_ack = [s_ for a in worker_checks if (s_ := _secs(a["timestamp"], a.get("acknowledged_at"))) is not None]
+    ops = repo.meta.get("ops") or {}
+    break_minutes = {"hydration_break": 10, "cooling_rest_break": 20, "relocation_cooler_area": 30, "shift_adjustment": 60}
+    iv_lost = 0.0
+    for i in ivs:
+        if i["action"] in break_minutes:
+            crew = repo.crews.get(i["crew_id"], {})
+            iv_lost += (i.get("planned_duration_minutes") or break_minutes[i["action"]]) * crew.get("worker_count", 0)
+    rest_min = float(ops.get("rest_worker_minutes", 0.0))
+    midday_min = float(ops.get("midday_break_worker_minutes", 0.0))
+    symptom_counts = Counter(sym["code"] for e in escs for sym in e.get("symptoms") or [])
+    safety = {
+        "adherence_to_controls": {
+            "serious_heat_alerts": len(serious),
+            "with_protective_control": sum(1 for a in serious if controlled(a)),
+            "rate": round(sum(1 for a in serious if controlled(a)) / len(serious), 3) if serious else None,
+        },
+        "midday_break_compliance": {
+            "alerts": len(regulatory),
+            "with_recorded_action": sum(1 for a in regulatory if controlled(a)),
+            "rate": round(sum(1 for a in regulatory if controlled(a)) / len(regulatory), 3) if regulatory else None,
+        },
+        "symptoms_and_incidents": {
+            "reports": len(escs),
+            "first_aid": sum(1 for e in escs if e["level"] == "first_aid"),
+            "emergency": sum(1 for e in escs if e["level"] == "emergency"),
+            "by_symptom": dict(symptom_counts),
+            "worker_strain_checks": len(worker_checks),
+        },
+        "escalations": {
+            "total": len(escs),
+            "open": sum(1 for e in escs if e["status"] != "closed"),
+            "emergency_calls": sum(1 for e in escs if e.get("outcome") == "ambulance_called"),
+            "outcomes": dict(Counter(e["outcome"] for e in escs if e.get("outcome"))),
+            "time_to_acknowledge_seconds": _stats(esc_ack),
+            "time_to_close_seconds": _stats(esc_close),
+            "worker_check_ack_seconds": _stats(wc_ack),
+        },
+        "lost_work_time": {
+            "rest_breaks_worker_hours": round(rest_min / 60, 1),
+            "midday_break_worker_hours": round(midday_min / 60, 1),
+            "intervention_breaks_worker_hours": round(iv_lost / 60, 1),
+            "total_worker_hours": round((rest_min + midday_min + iv_lost) / 60, 1),
+            "note": "Simulated time: 1 tick = 1 site minute. Protective time counted as lost work time; safety comes first.",
+        },
+    }
+
     # ---- assessments
     assessments = list(repo.assessments)
     valid = sum(1 for a in assessments if a["assessment_status"] == "valid")
@@ -119,6 +179,7 @@ def summary(svc: HeatGuardService) -> dict:
             "outage_seconds": _stats([float(x) for x in outages if x is not None]),
             "pending_database_writes": repo.pending_writes,
         },
+        "safety": safety,
         "evaluation": repo.evaluation,
     }
 

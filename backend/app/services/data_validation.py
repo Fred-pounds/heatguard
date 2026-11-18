@@ -2,6 +2,13 @@
 from __future__ import annotations
 
 from ..schemas.sensor import SensorReadingIn, ValidationIssue, ValidationResult
+from .psychrometrics import stull_wet_bulb
+
+# Natural wet-bulb normally sits between the psychrometric wet-bulb and a few degrees above it (radiant load).
+# A reading far above that band means a dry or dust-fouled wick; far below means a faulty probe.
+WICK_MAX_ABOVE = 3.5
+WICK_MAX_BELOW = 1.5
+DUST_UNRELIABLE = 0.5  # station-reported fouling at which globe and wick readings are no longer trusted
 
 # Plausible operating ranges for occupational heat monitoring instruments (degC / %RH).
 RANGES = {
@@ -36,11 +43,29 @@ def validate_reading(r: SensorReadingIn) -> ValidationResult:
             continue
         valid.append(field)
 
+    # Heavy dust fouling: a coated globe under-reads radiant heat (a hidden false-safe risk), so do not trust it
+    if r.dust_index is not None and r.dust_index >= DUST_UNRELIABLE:
+        for field in ("globe_temperature", "natural_wet_bulb"):
+            if field in valid:
+                valid.remove(field)
+                issues.append(ValidationIssue(field=field, issue="sensor_fault",
+                                              detail=f"Dust fouling {r.dust_index:.2f}: reading unreliable until the station is cleaned"))
+
     # Cross-field physical plausibility (tolerance for measurement noise)
     if "natural_wet_bulb" in valid and "dry_bulb" in valid and r.natural_wet_bulb > r.dry_bulb + 1.0:  # type: ignore[operator]
         issues.append(ValidationIssue(field="natural_wet_bulb", issue="implausible",
                                       detail=f"Natural wet-bulb {r.natural_wet_bulb} exceeds dry-bulb {r.dry_bulb}"))
         valid.remove("natural_wet_bulb")
+    if ("natural_wet_bulb" in valid and "dry_bulb" in valid and "relative_humidity" in valid
+            and "natural_wet_bulb" not in (r.manual_override or [])):
+        expected = stull_wet_bulb(r.dry_bulb, r.relative_humidity)  # type: ignore[arg-type]
+        diff = r.natural_wet_bulb - expected  # type: ignore[operator]
+        if diff > WICK_MAX_ABOVE or diff < -WICK_MAX_BELOW:
+            issues.append(ValidationIssue(
+                field="natural_wet_bulb", issue="implausible",
+                detail=f"Wet-bulb {r.natural_wet_bulb:.1f} degC inconsistent with air {r.dry_bulb:.1f} degC and RH "
+                       f"{r.relative_humidity:.0f}% (expected about {expected:.1f} degC): wick may be dry or dust-fouled"))
+            valid.remove("natural_wet_bulb")
     if "globe_temperature" in valid and "dry_bulb" in valid and r.globe_temperature < r.dry_bulb - 5.0:  # type: ignore[operator]
         issues.append(ValidationIssue(field="globe_temperature", issue="implausible",
                                       detail=f"Globe {r.globe_temperature} far below dry-bulb {r.dry_bulb}"))

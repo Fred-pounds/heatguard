@@ -110,6 +110,55 @@ class AlertEngine:
             return [existing]
         return []
 
+    # ------------------------------------------------------------------ generic alerts (worker checks, maintenance, escalations)
+    def raise_simple(self, *, worksite_id: str, worksite_name: str, crew_id: str, crew_name: str, alert_type: str,
+                     severity: str, level: int, explanation: str, recommendations: list[dict], factors: list[dict] | None = None,
+                     escalation_id: str | None = None, dedupe: bool = True) -> dict:
+        existing = self.open_alert(worksite_id, crew_id, alert_type) if dedupe else None
+        if existing:
+            existing["duplicate_count"] = existing.get("duplicate_count", 0) + 1
+            existing["updated_at"] = now_iso()
+            if existing["improving_streak"]:
+                existing["improving_streak"] = 0
+                if existing["resolution_status"] == "conditions_improving":
+                    existing["resolution_status"] = "open"
+            if level > existing["severity_level"]:
+                existing.update(severity=severity, severity_level=level, peak_severity=severity)
+                if existing["acknowledgement_status"] == "acknowledged":
+                    existing["acknowledgement_status"] = "unacknowledged"
+            existing["explanation"] = explanation
+            existing["recommendations"] = recommendations
+            self.repo.save_alert(existing)
+            return existing
+        alert = Alert(
+            alert_id=new_id("alr"), timestamp=now_iso(), updated_at=now_iso(), worksite_id=worksite_id,
+            worksite_name=worksite_name, crew_id=crew_id, crew_name=crew_name, alert_type=alert_type,  # type: ignore[arg-type]
+            severity=severity, severity_level=level, peak_severity=severity,  # type: ignore[arg-type]
+            explanation=explanation, recommendations=recommendations, contributing_factors=factors or [],
+            escalation_id=escalation_id,
+            history=[AlertEvent(timestamp=now_iso(), event="created", detail=explanation[:140])],
+        ).model_dump()
+        self.repo.save_alert(alert)
+        return alert
+
+    def clear_simple(self, worksite_id: str, crew_id: str, alert_type: str, why: str) -> dict | None:
+        existing = self.open_alert(worksite_id, crew_id, alert_type)
+        if existing:
+            self._improve(existing, None, why)
+        return existing
+
+    def close_for_escalation(self, escalation_id: str, note: str, actor: str) -> None:
+        for alert in self.repo.alerts.values():
+            if alert.get("escalation_id") == escalation_id and alert["resolution_status"] != "resolved":
+                alert["acknowledgement_status"] = "acknowledged"
+                alert["acknowledged_at"] = alert.get("acknowledged_at") or now_iso()
+                alert["resolution_status"] = "resolved"
+                alert["resolved_at"] = now_iso()
+                alert["resolved_by"] = actor
+                alert["resolution_note"] = note
+                alert["history"].append(_event("resolved", note, actor))
+                self.repo.save_alert(alert)
+
     def _raise_or_repeat(self, a: Assessment, alert_type: str, crew_id: str, crew_name: str, worksite_name: str,
                          severity: str, level: int) -> list[dict]:
         existing = self.open_alert(a.worksite_id, crew_id, alert_type)
@@ -167,11 +216,12 @@ class AlertEngine:
         self.repo.save_alert(existing)
         return [existing]
 
-    def _improve(self, alert: dict, a: Assessment, why: str) -> None:
+    def _improve(self, alert: dict, a: Assessment | None, why: str) -> None:
         alert["improving_streak"] = alert.get("improving_streak", 0) + 1
-        alert["latest_category"] = a.risk_category
+        if a is not None:
+            alert["latest_category"] = a.risk_category
         alert["updated_at"] = now_iso()
-        needed = 3 if alert["alert_type"] in ("data_quality", "regulatory") else self.sustained
+        needed = 3 if alert["alert_type"] in ("data_quality", "regulatory", "maintenance", "worker_check") else self.sustained
         if alert["resolution_status"] == "open" and alert["improving_streak"] >= needed:
             alert["resolution_status"] = "conditions_improving"
             alert["history"].append(_event(

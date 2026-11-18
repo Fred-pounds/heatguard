@@ -39,6 +39,9 @@ class HeatGuardRepository:
         self.system_health: dict = {}
         self.evaluation: dict | None = None
         self.meta: dict = {}
+        self.workers: dict[str, dict] = {}  # pseudonymous wearable-programme participants (OHS-restricted)
+        self.worker_status: dict[str, dict] = {}  # latest status flags only (raw signals are never persisted)
+        self.escalations: dict[str, dict] = {}  # symptom reports + clinical escalation (OHS-restricted)
         self._pending: dict[str, Any] = {}
         self.last_sync: str | None = None
         self.sync_error: str | None = None
@@ -72,6 +75,13 @@ class HeatGuardRepository:
                             item[key] = []
             self.evaluation = tree.get("evaluation")
             self.meta = dict(tree.get("meta") or {})
+            self.workers = dict(tree.get("workers") or {})
+            self.escalations = dict(tree.get("escalations") or {})
+            for w in self.workers.values():
+                w.setdefault("consent", {}).setdefault("scopes", [])
+            for e in self.escalations.values():
+                for key in ("symptoms", "timeline"):
+                    e[key] = e.get(key) or []
 
     # ------------------------------------------------------------------ queue
     def _queue(self, path: str, value: Any) -> None:
@@ -175,6 +185,21 @@ class HeatGuardRepository:
         self.evaluation = ev
         self._queue("evaluation", ev)
 
+    def save_worker(self, w: dict) -> None:
+        self.workers[w["worker_id"]] = w
+        self._queue(f"workers/{w['worker_id']}", w)
+
+    def save_worker_status(self, worker_id: str, status: dict | None) -> None:
+        if status is None:
+            self.worker_status.pop(worker_id, None)
+        else:
+            self.worker_status[worker_id] = status
+        self._queue(f"worker_status/{worker_id}", status)
+
+    def save_escalation(self, esc: dict) -> None:
+        self.escalations[esc["escalation_id"]] = esc
+        self._queue(f"escalations/{esc['escalation_id']}", esc)
+
     def set_meta(self, meta: dict) -> None:
         self.meta = {**self.meta, **meta}
         self._queue("meta", self.meta)
@@ -185,15 +210,17 @@ class HeatGuardRepository:
         with self._lock:
             self.worksites.clear()
             self.crews.clear()
+            self.workers.clear()
             self.simulation = {}
             self.meta = {}
-            for p in ("worksites", "crews", "simulation", "system_health", "meta"):
+            for p in ("worksites", "crews", "workers", "simulation", "system_health", "meta"):
                 self._pending.pop(p, None)
                 self._queue(p, None)
 
     def clear_operational_data(self) -> None:
         """Remove readings, assessments, alerts, interventions and events (keeps worksites/crews)."""
-        roots = ("sensor_readings", "assessments", "latest_assessments", "alerts", "interventions", "events", "evaluation")
+        roots = ("sensor_readings", "assessments", "latest_assessments", "alerts", "interventions", "events", "evaluation",
+                 "escalations", "worker_status")
         with self._lock:
             # drop queued child writes superseded by the root deletes below
             for k in list(self._pending):
@@ -206,5 +233,8 @@ class HeatGuardRepository:
             self.interventions.clear()
             self.events.clear()
             self.evaluation = None
+            self.escalations.clear()
+            self.worker_status.clear()
+            self.meta.pop("ops", None)
             for p in roots:
                 self._queue(p, None)

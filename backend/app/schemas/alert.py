@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-Severity = Literal["routine", "caution", "elevated", "high", "critical", "data_unavailable", "regulatory"]
+Severity = Literal["routine", "caution", "elevated", "high", "critical", "data_unavailable", "regulatory", "maintenance"]
 
 
 class AlertEvent(BaseModel):
@@ -22,7 +22,7 @@ class Alert(BaseModel):
     worksite_name: str = ""
     crew_id: str
     crew_name: str = ""
-    alert_type: Literal["heat_risk", "data_quality", "regulatory"]
+    alert_type: Literal["heat_risk", "data_quality", "regulatory", "worker_check", "escalation", "maintenance"]
     severity: Severity
     severity_level: int
     peak_severity: Severity
@@ -43,6 +43,7 @@ class Alert(BaseModel):
     improving_streak: int = 0
     latest_category: str | None = None
     intervention_ids: list[str] = Field(default_factory=list)
+    escalation_id: str | None = None
     history: list[AlertEvent] = Field(default_factory=list)
     data_origin: str = "SIMULATED"
 

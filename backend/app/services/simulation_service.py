@@ -5,7 +5,10 @@ is global so the whole demo moves together.
 """
 from __future__ import annotations
 
+import random
+
 from heatguard_sim import SCENARIOS
+from heatguard_sim.wearable import VirtualWearable
 
 from ..sensors.simulated_station import SimulatedSensorSource
 
@@ -20,6 +23,7 @@ class SimulationService:
         self.state = "stopped"  # running | paused | stopped
         self.speed = 1.0
         self.db_outage = False  # simulated loss of database connectivity (sync queue demo)
+        self.wearables: dict[str, VirtualWearable] = {}  # only for consented workers
 
     # ------------------------------------------------------------------ sources
     def add_station(self, worksite_id: str, scenario_id: str) -> SimulatedSensorSource:
@@ -31,6 +35,14 @@ class SimulationService:
         if worksite_id not in self.sources:
             raise KeyError(f"No simulated station for worksite {worksite_id}")
         return self.sources[worksite_id].station
+
+    def wearable(self, worker: dict) -> VirtualWearable:
+        w = self.wearables.get(worker["worker_id"])
+        if w is None:
+            rng = random.Random(f"{self.seed}-{worker['worker_id']}")
+            w = VirtualWearable(worker_id=worker["worker_id"], device_id=worker["device_id"], offset=rng.uniform(-6, 6), rng=rng)
+            self.wearables[worker["worker_id"]] = w
+        return w
 
     @property
     def tick_interval(self) -> float:
@@ -60,6 +72,8 @@ class SimulationService:
         for ws, src in self.sources.items():
             if worksite_id is None or ws == worksite_id:
                 src.station.reset()
+        if worksite_id is None:
+            self.wearables.clear()
 
     def set_scenario(self, worksite_id: str, scenario_id: str, environment: str) -> None:
         sc = SCENARIOS.get(scenario_id)

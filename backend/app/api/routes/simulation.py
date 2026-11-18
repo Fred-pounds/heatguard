@@ -59,6 +59,16 @@ class JumpRequest(BaseModel):
     sim_clock: str = Field(pattern=r"^\d{2}:\d{2}$", description="Target site time (HH:MM) within the current scenario day")
 
 
+class StationFieldRequest(BaseModel):
+    worksite_id: str
+    enabled: bool = True
+
+
+class StrainRequest(BaseModel):
+    worker_id: str
+    level: float = Field(default=1.0, ge=0, le=1)
+
+
 class ToggleRequest(BaseModel):
     enabled: bool
 
@@ -114,7 +124,7 @@ async def stop(svc: HeatGuardService = Depends(get_service)):
 @router.post("/step", dependencies=guard)
 async def step(svc: HeatGuardService = Depends(get_service)):
     """Advance every station by one simulated minute (works while paused)."""
-    svc.process_batch(svc.sim.poll_all())
+    svc.process_batch(svc.sim.poll_all(), from_sim=True)
     return _status(svc)
 
 
@@ -128,7 +138,7 @@ async def jump(body: JumpRequest, svc: HeatGuardService = Depends(get_service)):
     if not 0 <= target < st.scenario.duration_min:
         raise HTTPException(422, f"{body.sim_clock} is outside this scenario ({st.scenario.start_clock} for {st.scenario.duration_min} min)")
     st.sim_minute = target
-    svc.process_batch(svc.sim.poll_all())
+    svc.process_batch(svc.sim.poll_all(), from_sim=True)
     svc._event("simulation_jump", body.worksite_id, f"Site clock moved to {body.sim_clock}")  # noqa: SLF001
     return _status(svc)
 
@@ -142,7 +152,7 @@ async def reset(body: ResetRequest, svc: HeatGuardService = Depends(get_service)
         svc._last_valid.clear()  # noqa: SLF001
         svc._crew_counter.clear()  # noqa: SLF001
         # Take a first reading immediately so the empty store is never mistaken for a station outage
-        svc.process_batch(svc.sim.poll_all())
+        svc.process_batch(svc.sim.poll_all(), from_sim=True)
     svc._event("simulation_reset", body.worksite_id, "Simulation reset" + (" and operational history cleared" if body.clear_history else ""))  # noqa: SLF001
     return _status(svc)
 
@@ -227,6 +237,45 @@ async def network_restore(body: WorksiteRequest, svc: HeatGuardService = Depends
     st.network_up = True
     svc._event("network_restore_simulated", body.worksite_id, f"Station uplink restored; {len(st.buffer)} queued readings will synchronise")  # noqa: SLF001
     return _status(svc)
+
+
+@router.post("/battery-fault", dependencies=guard)
+async def battery_fault(body: StationFieldRequest, svc: HeatGuardService = Depends(get_service)):
+    """Failing battery/panel: the station battery drains about 3% per simulated minute; at 0% the station goes silent."""
+    st = _station(svc, body.worksite_id)
+    st.battery_fault = body.enabled
+    if not body.enabled:
+        st.battery_pct = max(st.battery_pct, 85.0)
+    svc._event("battery_fault_simulated" if body.enabled else "battery_replaced_simulated", body.worksite_id,  # noqa: SLF001
+               "Station battery failing" if body.enabled else "Station battery replaced")
+    return _status(svc)
+
+
+@router.post("/dust", dependencies=guard)
+async def dust(body: StationFieldRequest, svc: HeatGuardService = Depends(get_service)):
+    """Dust event: fouling of globe and wick builds up quickly. enabled=false cleans the station."""
+    st = _station(svc, body.worksite_id)
+    if body.enabled:
+        st.dust_boost = 0.05
+    else:
+        st.dust_boost = 0.0
+        st.dust = 0.0
+    svc._event("dust_simulated" if body.enabled else "station_cleaned_simulated", body.worksite_id,  # noqa: SLF001
+               "Dust is fouling the globe and wick" if body.enabled else "Station cleaned: globe and wick serviced")
+    return _status(svc)
+
+
+@router.post("/worker-strain", dependencies=guard)
+async def worker_strain(body: StrainRequest, svc: HeatGuardService = Depends(get_service)):
+    """Make one consented worker's simulated wearable show physiological strain (or recover with level 0)."""
+    w = svc.repo.workers.get(body.worker_id)
+    if not w:
+        raise HTTPException(404, "Unknown worker")
+    if w["consent"]["status"] != "granted":
+        raise HTTPException(409, "This worker has not consented to share signals")
+    svc.sim.wearable(w).strain = body.level
+    svc._event("worker_strain_simulated", None, f"Badge {w['badge']}: simulated strain {body.level:.0%}")  # noqa: SLF001
+    return {"badge": w["badge"], "strain": body.level}
 
 
 @router.post("/database-outage", dependencies=guard)

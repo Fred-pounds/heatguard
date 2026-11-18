@@ -73,5 +73,7 @@ class Assessment(BaseModel):
     assessment_method: str
     guideline_reference: str
     limitations: list[str]
+    outlook: dict = Field(default_factory=dict, description="Trend projection: minutes to limit, midday-break countdown")
+    worker_signals: dict | None = Field(default=None, description="Crew-level summary of consented wearable signals (no individual values)")
     regulatory_flags: list[dict] = Field(default_factory=list, description="Country-specific legal restrictions in force (e.g. UAE midday break)")
     data_origin: Literal["SIMULATED", "MEASURED"] = "SIMULATED"

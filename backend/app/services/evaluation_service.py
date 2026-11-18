@@ -46,6 +46,8 @@ class Case:
     network_outage: tuple[int, int] | None = None
     seed: int = 42
     minutes: int | None = None
+    actions: tuple = ()  # (minute, action) pairs: "battery_fault", "dust", "strain"
+    consented_workers: int = 0
 
 
 CASES = [
@@ -85,6 +87,19 @@ CASES = [
          {"workload": "light", "clothing": "standard_work_clothing", "acclimatization": "acclimatized"},
          "The legal midday-break restriction is flagged from 12:30 in summer, and not before.",
          {"midday_break_from": "12:30"}),
+    Case("dust_storm", "Shamal dust storm - fouled globe and wick", "dust_storm",
+         {"workload": "moderate", "clothing": "standard_work_clothing", "acclimatization": "acclimatized"},
+         "A dust-fouled station is detected and never trusted; maintenance is requested.",
+         {"no_false_safe": True, "maintenance_alert": True, "fouled_unavailable": True}, minutes=120),
+    Case("battery_depletion", "Station battery failure", "normal",
+         {"workload": "moderate", "clothing": "standard_work_clothing", "acclimatization": "acclimatized"},
+         "Low battery is reported before the station dies; afterwards data are stale, never safe.",
+         {"no_false_safe": True, "maintenance_alert": True, "detect_dead_station": True},
+         minutes=90, actions=((20, "battery_fault"),)),
+    Case("worker_strain", "Consented worker shows physiological strain", "normal",
+         {"workload": "heavy", "clothing": "standard_work_clothing", "acclimatization": "acclimatized"},
+         "A consented worker's sustained high heart rate raises a worker check within minutes, with no false checks before.",
+         {"worker_check_after": 40, "worker_check_within": 6}, minutes=70, actions=((40, "strain"),), consented_workers=3),
     Case("indoor_heavy", "Industrial indoor - heavy work in coveralls", "industrial_indoor",
          {"workload": "heavy", "clothing": "cloth_coveralls", "acclimatization": "acclimatized"},
          "Indoor WBGT formula used; heavy work classified above routine.",
@@ -122,6 +137,12 @@ def run_case(case: Case, base: Settings) -> dict:
     crew = Crew(crew_id="eval_crew", name="Evaluation crew", worksite_id="eval_site", zone="Zone 1", worker_count=5,
                 created_at=ts, updated_at=ts, **case.crew).model_dump()
     svc.repo.save_crew(crew)
+    from ..schemas.worker import Consent, Worker
+
+    for i in range(case.consented_workers):
+        svc.repo.save_worker(Worker(worker_id=f"eval_w{i}", badge=f"EV-{i + 1:02d}", crew_id="eval_crew", device_id=f"dev-ev{i}",
+                                    age_band="30-39", consent=Consent(status="granted", scopes=["heart_rate", "core_temp_est"], granted_at=ts),
+                                    created_at=ts).model_dump())
     src = svc.sim.add_station("eval_site", case.scenario_id)
     src.station.seed = case.seed
     src.station.reset()
@@ -136,9 +157,18 @@ def run_case(case: Case, base: Settings) -> dict:
     known_alerts: set[str] = set()
     backfilled = 0
 
+    worker_check_minutes: list[int] = []
+    maintenance_seen = False
     for _ in range(minutes):
         m = station.sim_minute
         vt[0] = vt[0] + timedelta(seconds=SECONDS_PER_MIN)
+        for when, act in case.actions:
+            if m == when and act == "battery_fault":
+                station.battery_fault = True
+            elif m == when and act == "dust":
+                station.dust_boost = 0.05
+            elif m == when and act == "strain":
+                svc.sim.wearable(svc.repo.workers["eval_w0"]).strain = 1.0
         down = case.network_outage is not None and case.network_outage[0] <= m < case.network_outage[1]
         station.network_up = not down
         # ---- reference outcome from noise-free ground truth
@@ -158,7 +188,7 @@ def run_case(case: Case, base: Settings) -> dict:
         # ---- system pipeline on noisy / faulty / delayed data
         batch = svc.sim.poll_all()
         backfilled += sum(1 for r in batch if r.late_sync)
-        svc.process_batch(batch)
+        svc.process_batch(batch, from_sim=True)
         svc.check_staleness()
         a = svc.repo.latest_assessments.get("eval_crew")
         sys_level = LEVEL[a["risk_category"]] if a else -1
@@ -166,6 +196,9 @@ def run_case(case: Case, base: Settings) -> dict:
         fault = (latest is None or latest["validation"]["measurement_validity"] != "valid"
                  or (svc.reading_age(latest) or 0) > settings.stale_after_seconds)
         heat_open = svc.alerts.open_alert("eval_site", "eval_crew", "heat_risk")
+        if svc.alerts.open_alert("eval_site", "eval_crew", "worker_check"):
+            worker_check_minutes.append(m)
+        maintenance_seen = maintenance_seen or svc.alerts.open_alert("eval_site", "__site__", "maintenance") is not None
         data_open = (svc.alerts.open_alert("eval_site", "__site__", "data_quality")
                      or svc.alerts.open_alert("eval_site", "eval_crew", "data_quality"))
         for al in svc.repo.alerts.values():
@@ -189,6 +222,8 @@ def run_case(case: Case, base: Settings) -> dict:
     first_exceed = exceed[0] if exceed else None
     first_alert = next((i for i in range(n) if tr.heat_alert_open[i]), None)
     lead = (first_exceed - first_alert) if first_exceed is not None and first_alert is not None else None
+    if case.expect.get("fouled_unavailable"):
+        lead = None  # alerts here come from the fouled sensor over-reading, not genuine early warning
     missed = sum(1 for i in exceed if not tr.heat_alert_open[i] and not tr.data_alert_open[i])
     missed_rate = missed / len(exceed) if exceed else 0.0
     false_alarms = sum(1 for i, lvl in alerts_created if max(tr.truth[i:i + FALSE_ALARM_HORIZON_MIN] or [-1]) < lvl)
@@ -274,6 +309,23 @@ def run_case(case: Case, base: Settings) -> dict:
         checks.append(_check("No midday-break flag before the window", 0, before, before == 0))
         reg_alert = any(al["alert_type"] == "regulatory" for al in svc.repo.alerts.values())
         checks.append(_check("Midday-break alert raised", True, reg_alert, reg_alert))
+    if e.get("maintenance_alert"):
+        checks.append(_check("Maintenance alert raised", True, maintenance_seen, maintenance_seen))
+    if e.get("fouled_unavailable"):
+        fouled = sum(1 for i in range(n) if tr.fault[i])
+        bad = sum(1 for i in range(n) if tr.fault[i] and tr.system[i] != -1)
+        checks.append(_check("Every fouled/invalid minute yields 'unavailable'", 0, f"{bad} of {fouled}", bad == 0 and fouled > 0))
+    if e.get("detect_dead_station"):
+        dead = any(tr.system[i] == -1 for i in range(n) if tr.minute[i] > 40)
+        checks.append(_check("Dead station detected as unavailable (stale)", True, dead, dead))
+    if "worker_check_after" in e:
+        start = e["worker_check_after"]
+        early = [x for x in worker_check_minutes if x < start]
+        first = next((x for x in worker_check_minutes if x >= start), None)
+        delay = None if first is None else first - start
+        checks.append(_check("No worker check before strain begins (false worker alarms)", 0, len(early), not early))
+        checks.append(_check("Worker check raised within (simulated minutes)", f"<= {e['worker_check_within']}", delay,
+                             delay is not None and delay <= e["worker_check_within"]))
     if e.get("indoor_formula"):
         ok = bool(tr.formula and "0.3*Tg" in tr.formula)
         checks.append(_check("Indoor WBGT formula applied", "0.7*Tnwb + 0.3*Tg", tr.formula, ok))

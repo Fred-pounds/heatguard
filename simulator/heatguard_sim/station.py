@@ -63,6 +63,10 @@ class VirtualStation:
     use_scheduled_events: bool = True
     buffer: deque = field(default_factory=lambda: deque(maxlen=720))
     sim_start: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    battery_pct: float = 92.0  # solar-charged station battery (synthetic)
+    battery_fault: bool = False  # simulated failing battery / panel
+    dust: float = 0.0  # 0 = clean, 1 = heavily fouled globe and wick
+    dust_boost: float = 0.0  # extra fouling per minute injected from the Simulation Lab
 
     def __post_init__(self) -> None:
         self.rng = random.Random(self.seed)
@@ -85,6 +89,10 @@ class VirtualStation:
         self.overrides = Overrides()
         self.manual_faults.clear()
         self.network_up = True
+        self.battery_pct = 92.0
+        self.battery_fault = False
+        self.dust = 0.0
+        self.dust_boost = 0.0
         self.buffer.clear()
         self.rng = random.Random(self.seed)
         self.run_id = uuid.uuid4().hex[:8]
@@ -193,6 +201,18 @@ class VirtualStation:
                 sensor_status[sensor] = "ok"
 
         ts = datetime.now(timezone.utc)
+        # --- dust fouling: a dusty globe under-reads radiant heat; a dry/dirty wick drifts towards air temperature
+        self.dust = min(1.0, self.dust + self.scenario.dust_rate + self.dust_boost)
+        if self.dust > 0:
+            if measured["globe_temperature"] is not None and "globe_temperature" not in overridden:
+                measured["globe_temperature"] = round(st.tdb + (measured["globe_temperature"] - st.tdb) * (1 - 0.5 * self.dust), 2)
+            if measured["natural_wet_bulb"] is not None and "natural_wet_bulb" not in overridden:
+                measured["natural_wet_bulb"] = round(measured["natural_wet_bulb"] + 0.85 * self.dust * (st.tdb - measured["natural_wet_bulb"]), 2)
+        # --- battery: solar charging in daylight, constant drain; a faulty battery drains fast
+        drain = 3.0 if self.battery_fault else 0.08
+        charge = 0.12 * min(1.0, st.solar / 600.0) if not self.battery_fault else 0.0
+        self.battery_pct = max(0.0, min(100.0, self.battery_pct - drain + charge))
+
         reading = {
             "reading_id": uuid.uuid4().hex[:16],
             "station_id": self.station_id,
@@ -209,6 +229,8 @@ class VirtualStation:
             "air_speed": round(st.wind, 2),
             "sensor_status": sensor_status,
             "manual_override": overridden,
+            "battery_pct": round(self.battery_pct, 1),
+            "dust_index": round(self.dust, 3),
             "data_origin": "SIMULATED",
             "ground_truth": {
                 "dry_bulb": round(st.tdb, 3),
@@ -227,6 +249,9 @@ class VirtualStation:
         station ("edge buffer"); when it comes back, queued readings are
         delivered first, flagged as late-synchronised.
         """
+        if self.battery_pct <= 2.0:
+            self.sim_minute += 1  # station is off: time passes, nothing is transmitted
+            return []
         reading = self.tick()
         link_up = self.network_up and not self.scheduled_network_down(reading["sim_minute"])
         if not link_up:
@@ -256,6 +281,9 @@ class VirtualStation:
             "manual_network_down": not self.network_up,
             "buffered_readings": len(self.buffer),
             "overrides": {k: v for k, v in self.overrides.__dict__.items() if v is not None},
+            "battery_pct": round(self.battery_pct, 1),
+            "battery_fault": self.battery_fault,
+            "dust_index": round(self.dust, 3),
             "adjustments": dict(self.adjustments.__dict__),
             "data_origin": "SIMULATED",
         }

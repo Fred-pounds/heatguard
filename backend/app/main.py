@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from .api.routes import alerts, assessments, crews, interventions, reports, sensors, simulation, system
+from .api.routes import alerts, assessments, crews, interventions, reports, sensors, simulation, system, workers
 from .core.config import REPO_DIR, get_settings
 from .services.heatguard_service import HeatGuardService
 
@@ -46,7 +46,7 @@ def create_app() -> FastAPI:
         if not request.url.path.startswith("/api"):
             response.headers["Cache-Control"] = "no-cache"
         return response
-    for module in (system, crews, sensors, assessments, alerts, interventions, simulation, reports):
+    for module in (system, crews, sensors, assessments, alerts, interventions, simulation, reports, workers):
         app.include_router(module.router, prefix="/api")
     # Single-port demo: serve the Flutter Web build if it has been built
     # Serve whichever dashboard is newest: a local Flutter build (frontend/build/web) or the prebuilt

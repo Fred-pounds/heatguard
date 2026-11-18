@@ -14,9 +14,20 @@ from .conftest import make_crew
 G = load_guideline("niosh_2016")
 
 
-def reading(tdb=30.0, tnwb=24.0, tg=40.0, rh=55.0, solar=True, environment="outdoor", **kw):
+def consistent_rh(tdb, tnwb):
+    """Relative humidity that makes the psychrometric wet-bulb match tnwb (keeps test readings physically plausible)."""
+    from app.services.psychrometrics import stull_wet_bulb
+
+    if tnwb is None or tdb is None:
+        return 50.0
+    return min(range(5, 101), key=lambda rh: abs(stull_wet_bulb(tdb, rh) - tnwb))
+
+
+def reading(tdb=30.0, tnwb=24.0, tg=40.0, rh=None, solar=True, environment="outdoor", **kw):
+    if rh is None:
+        rh = consistent_rh(tdb, tnwb)
     rin = SensorReadingIn(station_id="s", worksite_id="ws", dry_bulb=tdb, natural_wet_bulb=tnwb, globe_temperature=tg,
-                          relative_humidity=rh, direct_solar=solar, **kw)
+                          relative_humidity=float(rh), direct_solar=solar, **kw)
     v = validate_reading(rin)
     valid = set(v.valid_fields)
     try:
@@ -180,3 +191,11 @@ def test_every_valid_assessment_has_explanation_and_reference(engine, outdoor_si
     for w in (20, 26, 28, 30, 33):
         a = engine.assess(ctx(outdoor_site, make_crew(workload="heavy"), wbgt_for(w)))
         assert a.explanation and a.guideline_reference and a.limitations and a.contributing_factors and a.recommended_actions
+
+
+def test_dry_or_fouled_wick_is_detected(engine, outdoor_site):
+    # 40 degC air at 20% RH has a wet-bulb near 22 degC; 35 degC means a dry or dust-fouled wick
+    r = reading(tdb=40.0, tnwb=35.0, tg=45.0, rh=20.0)
+    assert any(i.issue == "implausible" and "wick" in i.detail for i in r.validation.issues)
+    a = engine.assess(ctx(outdoor_site, make_crew(), r))
+    assert a.risk_category == "unavailable"

@@ -23,6 +23,7 @@ from ..repositories.repository import HeatGuardRepository
 from ..schemas.common import new_id, now_iso, utcnow
 from ..schemas.crew import Crew, Worksite
 from ..schemas.sensor import SensorReading, SensorReadingIn
+from ..schemas.worker import Consent, SignalIn, Worker
 from .alert_engine import AlertEngine
 from .data_validation import validate_reading
 from .guideline import load_guideline
@@ -30,12 +31,13 @@ from .intervention_service import InterventionService
 from .regulatory import load_midday_break
 from .risk_engine import AssessmentContext, RiskEngine
 from .simulation_service import SimulationService
+from .worker_service import WorkerService
 from .wbgt_calculator import MissingComponentError, compute_wbgt
 
 log = logging.getLogger("heatguard.service")
 
 HISTORY_EVERY_N = 5  # persist an assessment to history at least every N readings per crew
-DEMO_SEED_VERSION = "abu-dhabi-1"  # bump when the demo worksites/crews change
+DEMO_SEED_VERSION = "abu-dhabi-2"  # bump when the demo worksites/crews change
 
 
 class NullBackend(PersistenceBackend):
@@ -82,6 +84,7 @@ class HeatGuardService:
         self.interventions = InterventionService(self.repo)
         self.sim = SimulationService(settings.tick_seconds, settings.simulation_seed)
         self.clock = clock or utcnow
+        self.workers = WorkerService(self.repo, self.clock)
         self.started_at = now_iso()
         self._crew_counter: dict[str, int] = {}
         self._site_state: dict[str, dict] = {}  # per-site data-flow tracking (fault / stale episodes)
@@ -97,6 +100,7 @@ class HeatGuardService:
             self.repo.reset_all()
         if not self.repo.worksites and self.settings.seed_demo_data:
             self.seed_demo()
+            self.seed_workers()
             self.repo.set_meta({"seed_version": DEMO_SEED_VERSION})
         for ws in self.repo.worksites.values():
             scenario = (self.repo.simulation.get("stations", {}).get(ws["worksite_id"], {}) or {}).get("scenario_id")
@@ -137,10 +141,25 @@ class HeatGuardService:
                                      acclimatization=ac, current_task=task, shift_start="07:00", shift_duration_hours=8,
                                      created_at=ts, updated_at=ts).model_dump())
 
+    def seed_workers(self) -> None:
+        """Pseudonymous wearable-programme participants (SIMULATED). Some consented, one declined."""
+        ts = now_iso()
+        plan = [("crew_concrete_a", "CA", ["30-39", "18-29", "40-49", "30-39"], 1),
+                ("crew_rebar_b", "RB", ["18-29", "30-39"], 1),
+                ("crew_furnace", "FT", ["30-39", "50-59", "40-49"], 0)]
+        for crew_id, prefix, bands, declined in plan:
+            if crew_id not in self.repo.crews:
+                continue
+            for i, band in enumerate(bands + [None] * declined, start=1):
+                consent = Consent(status="granted", scopes=["heart_rate", "core_temp_est"], granted_at=ts) if band else Consent()
+                w = Worker(worker_id=f"wk_{prefix.lower()}{i:02d}", badge=f"{prefix}-{i:02d}", crew_id=crew_id,
+                           device_id=f"dev-{prefix.lower()}{i:02d}", age_band=band, consent=consent, created_at=ts)
+                self.repo.save_worker(w.model_dump())
+
     def warm_up(self, ticks: int) -> None:
         """Pre-populate history with simulated minutes so charts are not empty at demo start."""
         for _ in range(ticks):
-            self.process_batch([r for r in self.sim.poll_all()])
+            self.process_batch(self.sim.poll_all(), from_sim=True)
 
     # ================================================================== ingestion
     def worksite(self, worksite_id: str) -> Worksite:
@@ -169,7 +188,9 @@ class HeatGuardService:
         self._track_validity(ws.worksite_id, reading)
         return reading
 
-    def process_batch(self, readings: list[SensorReadingIn]) -> list[dict]:
+    def process_batch(self, readings: list[SensorReadingIn], from_sim: bool = False) -> list[dict]:
+        if from_sim:
+            self._simulate_wearables()
         if not readings:
             return []
         stored = [self.ingest(r) for r in readings]
@@ -182,8 +203,90 @@ class HeatGuardService:
         assessments = []
         for ws_id in dict.fromkeys(r["worksite_id"] for r in stored):
             assessments += self.assess_worksite(ws_id)
+            self._maintenance_check(ws_id)
+            self._worker_checks(ws_id)
+            if from_sim:
+                self._count_lost_time(ws_id)
         self.ticks += 1
         return assessments
+
+    # ================================================================== field operation
+    def _maintenance_check(self, ws_id: str) -> None:
+        r = self.latest_reading(ws_id)
+        if r is None:
+            return
+        reasons, actions = [], []
+        batt = r.get("battery_pct")
+        if batt is not None and batt < 25:
+            reasons.append(f"station battery at {batt:.0f}%")
+            actions.append({"action": "Charge or replace the station battery", "priority": "required", "source": "HeatGuard",
+                            "detail": "At 0% the station stops reporting and every assessment becomes unavailable."})
+        wick = any(i["issue"] == "implausible" and "wick" in i["detail"] for i in r["validation"]["issues"])
+        dust = r.get("dust_index") or 0
+        if wick or dust >= 0.3:
+            reasons.append("dust fouling of the globe and wet-bulb wick" + (" (wet-bulb reading implausible)" if wick else ""))
+            actions.append({"action": "Clean the globe and re-wet or replace the wick", "priority": "required", "source": "ISO 7243 maintenance",
+                            "detail": "Readings from a fouled station are not trusted; assessments stay unavailable until it is serviced."})
+        ws = self.repo.worksites[ws_id]
+        if reasons:
+            self.alerts.raise_simple(worksite_id=ws_id, worksite_name=ws["name"], crew_id="__site__", crew_name="Sensing station",
+                                     alert_type="maintenance", severity="maintenance", level=1,
+                                     explanation="Station maintenance needed: " + "; ".join(reasons) + ".", recommendations=actions)
+        else:
+            self.alerts.clear_simple(ws_id, "__site__", "maintenance", "station healthy again")
+
+    def _worker_checks(self, ws_id: str) -> None:
+        ws = self.repo.worksites[ws_id]
+        for crew in [c for c in self.repo.crews.values() if c["worksite_id"] == ws_id]:
+            summary = self.workers.crew_summary(crew)
+            for w in self.workers.workers_for_crew(crew["crew_id"]):
+                st = self.workers.status(w, crew.get("acclimatization", "unknown"))
+                prev = self.repo.worker_status.get(w["worker_id"])
+                if prev is None or prev.get("status") != st["status"] or prev.get("flags") != st["flags"]:
+                    self.repo.save_worker_status(w["worker_id"], {"status": st["status"], "flags": st["flags"], "updated_at": now_iso()})
+            if summary["checks_needed"]:
+                n = summary["checks_needed"]
+                self.alerts.raise_simple(
+                    worksite_id=ws_id, worksite_name=ws["name"], crew_id=crew["crew_id"], crew_name=crew["name"],
+                    alert_type="worker_check", severity="high", level=3,
+                    explanation=(f"{n} consented worker{'s' if n > 1 else ''} in {crew['name']} "
+                                 f"(badge {', '.join(summary['check_badges'])}) show signs of physiological heat strain. Check on them now."),
+                    recommendations=[
+                        {"action": "Check on the worker now", "priority": "urgent", "source": "NIOSH 2016",
+                         "detail": "Stop their work, move them to shade or a cooled area, give cool water."},
+                        {"action": "Call the first aider", "priority": "required", "source": "HeatGuard",
+                         "detail": "First aider assesses symptoms; if confused or collapsed, call 998."},
+                        {"action": "Do not return them to work on the strength of this system", "priority": "required", "source": "HeatGuard",
+                         "detail": "Return to work is decided by qualified personnel, not by HeatGuard."}])
+            else:
+                self.alerts.clear_simple(ws_id, crew["crew_id"], "worker_check", "no worker strain flags")
+
+    def _simulate_wearables(self) -> None:
+        """Generate signals only for consented workers (devices of others are treated as off)."""
+        for w in self.repo.workers.values():
+            if not self.workers.consented(w):
+                self.sim.wearables.pop(w["worker_id"], None)
+                continue
+            crew = self.repo.crews.get(w["crew_id"])
+            if not crew or crew["worksite_id"] not in self.sim.sources:
+                continue
+            wear = self.sim.wearable(w)
+            a = self.repo.latest_assessments.get(crew["crew_id"]) or {}
+            ld = a.get("limit_details") or {}
+            regime = self.guideline.regime(crew.get("work_rest_regime", "continuous"))
+            sig = wear.reading(crew.get("workload", "unknown"), regime["work_min"] / 60, a.get("effective_wbgt"),
+                               (ld.get("regime_limits") or {}).get("continuous"))
+            self.workers.ingest_signal(SignalIn(**sig))
+
+    def _count_lost_time(self, ws_id: str) -> None:
+        ops = self.repo.meta.setdefault("ops", {"rest_worker_minutes": 0.0, "midday_break_worker_minutes": 0.0, "crew_minutes": 0})
+        for crew in [c for c in self.repo.crews.values() if c["worksite_id"] == ws_id and c.get("active", True)]:
+            ops["crew_minutes"] += 1
+            regime = self.guideline.regime(crew.get("work_rest_regime", "continuous"))
+            ops["rest_worker_minutes"] += regime["rest_min"] / 60 * crew["worker_count"]
+            if (self.repo.latest_assessments.get(crew["crew_id"]) or {}).get("regulatory_flags"):
+                ops["midday_break_worker_minutes"] += crew["worker_count"]
+        self.repo.set_meta({"ops": ops})
 
     # ================================================================== assessment
     def latest_reading(self, worksite_id: str) -> dict | None:
@@ -218,6 +321,28 @@ class HeatGuardService:
                     vals.append(r["wbgt"])
         return mean(vals) if len(vals) >= 2 else None
 
+    def trend_c_per_min(self, worksite_id: str) -> float | None:
+        """Least-squares WBGT slope over the last 30 simulated minutes of valid readings (same run)."""
+        dq = self.repo.readings.get(worksite_id)
+        if not dq:
+            return None
+        latest = dq[-1]
+        pts = []
+        for r in reversed(dq):
+            if r.get("run_id") != latest.get("run_id") or r.get("sim_minute") is None:
+                break
+            if r["sim_minute"] < (latest.get("sim_minute") or 0) - 29:
+                break
+            if r.get("wbgt") is not None:
+                pts.append((r["sim_minute"], r["wbgt"]))
+        if len(pts) < 10:
+            return None
+        n = len(pts)
+        mx = sum(p[0] for p in pts) / n
+        my = sum(p[1] for p in pts) / n
+        den = sum((p[0] - mx) ** 2 for p in pts)
+        return None if den == 0 else sum((p[0] - mx) * (p[1] - my) for p in pts) / den
+
     def assess_crew(self, crew: dict, reading: dict | None = None, persist: bool = True) -> dict:
         ws = self.worksite(crew["worksite_id"])
         reading = reading if reading is not None else self.latest_reading(ws.worksite_id)
@@ -228,8 +353,22 @@ class HeatGuardService:
             reading_age_seconds=self.reading_age(reading), stale_after_seconds=self.settings.stale_after_seconds,
             rolling_mean_wbgt=self.rolling_mean_wbgt(ws.worksite_id) if reading else None,
             last_valid_category=(last_valid or {}).get("risk_category"), last_valid_time=(last_valid or {}).get("sim_clock"),
+            trend_c_per_min=self.trend_c_per_min(ws.worksite_id) if reading else None,
         )
         a = self.engine.assess(ctx)
+        summary = self.workers.crew_summary(crew)
+        if summary["enrolled"]:
+            a.worker_signals = summary
+            if summary["checks_needed"]:
+                from ..schemas.assessment import ContributingFactor, RecommendedAction
+
+                a.contributing_factors.insert(0, ContributingFactor(
+                    factor="Worker strain signals",
+                    detail=f"{summary['checks_needed']} of {summary['sharing']} consented workers sharing signals meet NIOSH physiological strain criteria.",
+                    direction="increases_concern"))
+                a.recommended_actions.insert(0, RecommendedAction(
+                    action=f"Check on badge {', '.join(summary['check_badges'])} now", priority="urgent", source="NIOSH 2016",
+                    detail="Stop their work, move them to shade or a cooled area, give cool water and call the first aider."))
         ad = a.model_dump()
         if a.assessment_status == "valid":
             self._last_valid[crew["crew_id"]] = ad
@@ -326,7 +465,7 @@ class HeatGuardService:
             try:
                 now = time.monotonic()
                 if self.sim.state == "running" and now >= next_tick:
-                    self.process_batch(self.sim.poll_all())
+                    self.process_batch(self.sim.poll_all(), from_sim=True)
                     self._publish_simulation()
                     next_tick = now + self.sim.tick_interval
                 elif self.sim.state != "running":
