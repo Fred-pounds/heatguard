@@ -278,6 +278,8 @@ heatguard/
 * [Data governance](docs/data_governance.md)
 * [Evaluation](docs/evaluation.md): method, metric definitions, results
 * [5-minute demo script](docs/demo_script.md)
+* [Business model and market (draft)](docs/business_model.md): sources, assumed prices, alternatives
+* [Submission deck](docs/submission/HeatGuard_Submission.pdf)
 
 ## Limitations
 
