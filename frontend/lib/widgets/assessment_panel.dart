@@ -53,6 +53,14 @@ class _AssessmentPanelState extends State<AssessmentPanel> {
       ],
       const SizedBox(height: 14),
       Text(_plain(a.explanation), style: t.bodyLarge),
+      if (_outlookFacts().isNotEmpty) ...[
+        const SizedBox(height: 14),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(color: HG.subtle, borderRadius: BorderRadius.circular(8)),
+          child: Wrap(spacing: 28, runSpacing: 10, children: _outlookFacts()),
+        ),
+      ],
       const SizedBox(height: 20),
 
       // ---- What to do
@@ -79,6 +87,20 @@ class _AssessmentPanelState extends State<AssessmentPanel> {
       if (!widget.compact)
         Details(title: 'Inputs, method and limitations', icon: Icons.menu_book_outlined, children: [_details()]),
     ]);
+  }
+
+  List<Widget> _outlookFacts() {
+    final o = a.outlook;
+    final w = a.workerSignals;
+    final trend = jNum(o['trend_c_per_hour']);
+    return [
+      if (trend != null) Fact('Trend', '${trend >= 0 ? '+' : ''}${trend.toStringAsFixed(1)} \u00b0C / hour'),
+      if (o['minutes_to_limit'] != null) Fact('Limit reached in', '~${o['minutes_to_limit']} min (projected)'),
+      if (o['midday_break_in_min'] != null) Fact('Midday break', 'starts in ${o['midday_break_in_min']} min'),
+      if (w != null)
+        Fact('Wearables (consented)',
+            '${w['sharing']} of ${w['crew_size']} sharing${(w['checks_needed'] as num? ?? 0) > 0 ? ' · ${w['checks_needed']} to check' : ''}'),
+    ];
   }
 
   /// Keep explanation sentences readable (strip the "(continuous work (60/0))" noise).

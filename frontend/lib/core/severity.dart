@@ -22,6 +22,9 @@ class Sev {
   /// Legal working-time restriction (UAE midday break). Not a heat-stress level, so it has its own colour.
   static const regulatory = Sev('regulatory', 'Midday break', 'Midday break', Color(0xFF1D4ED8), Color(0xFF1E3A8A), Icons.wb_sunny_outlined, 3);
 
+  /// Station maintenance (battery, dust). Operational, not a heat-stress level.
+  static const maintenance = Sev('maintenance', 'Maintenance', 'Maintenance', Color(0xFF64748B), Color(0xFF334155), Icons.build_outlined, 1);
+
   static const all = [routine, caution, elevated, high, critical];
 
   static Sev of(String? id) => switch (id) {
@@ -31,6 +34,7 @@ class Sev {
         'high' => high,
         'critical' => critical,
         'regulatory' => regulatory,
+        'maintenance' => maintenance,
         _ => unavailable, // 'unavailable' and 'data_unavailable'
       };
 

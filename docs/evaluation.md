@@ -29,32 +29,35 @@
 Operational metrics (acknowledgement time, intervention completion rate, sensor availability, missing-data
 frequency, connectivity recovery time, unresolved alerts) are computed live in **Reports** from stored data.
 
-## Results (seeded run, 10 cases, 27 checks, all passed)
+## Results (seeded run, 13 cases, 35 checks, all passed)
 
-Scenarios use Abu Dhabi climate profiles: a cool-season November morning, a July day heating up past the
-midday break, a summer afternoon on site, a humid Gulf-coast August morning, an indoor metal-processing hall
-and a sensor-failure morning.
+| Case | Scenario | Ref. peak | System peak | Lead (min) | False alarm | Missed | False-safe min | Checks |
+|---|---|---|---|---|---|---|---|---|
+| Normal conditions - light work, acclimatized | normal | routine | routine | – | 0% | 0% | 0 | 2/2 |
+| Increasing heat - moderate work, acclimatized | increasing_heat | critical | critical | 31 | 0% | 0% | 0 | 3/3 |
+| Heavy workload - high-radiant construction site | construction_radiant | critical | critical | 0 | 0% | 0% | 0 | 2/2 |
+| Increasing heat - unacclimatized crew | increasing_heat | critical | critical | 0 | 0% | 0% | 0 | 3/3 |
+| Missing data - unknown workload | normal | unavailable | unavailable | – | 0% | 0% | 0 | 2/2 |
+| Sensor failure - scheduled probe faults | sensor_failure | high | high | 16 | 0% | 0% | 0 | 4/4 |
+| Network failure - 20 min uplink outage during rising heat | increasing_heat | critical | critical | 31 | 0% | 0% | 0 | 4/4 |
+| Humid coastal morning - moderate work | humid_coastal | critical | critical | 0 | 0% | 0% | 0 | 2/2 |
+| UAE midday break - outdoor work at 12:30 | increasing_heat | critical | critical | 31 | 0% | 0% | 0 | 3/3 |
+| Shamal dust storm - fouled globe and wick | dust_storm | elevated | high | – | 0% | 0% | 0 | 3/3 |
+| Station battery failure | normal | routine | routine | – | 0% | 0% | 0 | 3/3 |
+| Consented worker shows physiological strain | normal | routine | routine | – | 0% | 0% | 0 | 2/2 |
+| Industrial indoor - heavy work in coveralls | industrial_indoor | high | high | 0 | 0% | 0% | 0 | 2/2 |
 
-| Case | Scenario | Ref. peak | System peak | Lead (min) | False alarm | Missed | False-safe min | Completeness | Checks |
-|---|---|---|---|---|---|---|---|---|---|
-| Normal conditions - light work, acclimatized | normal | routine | routine | – | 0% | 0% | 0 | 100% | 2/2 |
-| Increasing heat - moderate work, acclimatized | increasing_heat | critical | critical | 31 | 0% | 0% | 0 | 100% | 3/3 |
-| Heavy workload - high-radiant construction site | construction_radiant | critical | critical | 0 | 0% | 0% | 0 | 100% | 2/2 |
-| Increasing heat - unacclimatized crew | increasing_heat | critical | critical | 0 | 0% | 0% | 0 | 100% | 3/3 |
-| Missing data - unknown workload | normal | unavailable | unavailable | – | 0% | 0% | 0 | 0% | 2/2 |
-| Sensor failure - scheduled probe faults | sensor_failure | high | high | 16 | 0% | 0% | 0 | 62% | 4/4 |
-| Network failure - 20 min uplink outage during rising heat | increasing_heat | critical | critical | 31 | 0% | 0% | 0 | 96% | 4/4 |
-| Humid coastal morning - moderate work | humid_coastal | critical | critical | 0 | 0% | 0% | 0 | 100% | 2/2 |
-| UAE midday break - outdoor work at 12:30 | increasing_heat | critical | critical | 31 | 0% | 0% | 0 | 100% | 3/3 |
-| Industrial indoor - heavy work in coveralls | industrial_indoor | high | high | 0 | 0% | 0% | 0 | 100% | 2/2 |
+Field-condition cases:
+* **Shamal dust storm:** every fouled or invalid minute (100 of 100) produced "unavailable", a maintenance alert was
+  raised, and no minute was shown as safe. Lead time is not reported for this case, because its alerts come from the
+  fouled wick over-reading, not from genuine early warning.
+* **Battery failure:** a low-battery maintenance alert came while the station was still reporting. Once it died,
+  the silence was detected as stale data ("unavailable").
+* **Worker strain:** a consented worker's sustained high heart rate raised a worker check 2 simulated minutes after
+  strain began, with no false worker checks in the 40 minutes before.
 
-Network-failure case: the outage was detected as stale data after 18 s, a valid assessment returned 3 s after
-the uplink was restored, and all 20 queued readings were back-filled. In the same July scenario the
-unacclimatized crew was alerted from minute 0 (07:00 already exceeds the lower RAL), while the acclimatized crew
-was alerted at minute 57, 31 minutes before its REL was exceeded at minute 88.
-
-UAE midday-break case: the compliance flag first appears at exactly 12:30 site time, never before, and raises
-one site-level "Midday break" alert.
+Earlier cases are unchanged: an outage was detected after 18 s with all 20 queued readings back-filled, and the
+midday break was flagged at exactly 12:30. The mean alert lead time is 13.6 minutes.
 
 ### Interpreting these numbers honestly
 
@@ -67,7 +70,7 @@ one site-level "Midday break" alert.
 
 ## Unit tests
 
-`cd backend && python -m pytest app/tests -q` runs 35 tests (plus a Firebase-emulator integration test when the emulator is running) covering WBGT formulas and formula selection,
+`cd backend && python -m pytest app/tests -q` runs 42 tests (plus a Firebase-emulator integration test when the emulator is running) covering WBGT formulas and formula selection,
 the NIOSH equations, category boundaries, work/rest effects, RAL for unknown acclimatization, clothing
 adjustment, rolling-mean retention, missing, invalid, implausible and stale data, incomplete context, duplicate
 suppression, no auto-clear, resolution rules, site-level data alerts, intervention reassessment, edge

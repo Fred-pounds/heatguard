@@ -135,7 +135,7 @@ class _AlertRow extends StatelessWidget {
                 Row(children: [
                   Flexible(child: Text(a.crewName, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
                   const SizedBox(width: 8),
-                  Text(a.type == 'data_quality' ? 'Data unavailable' : Sev.of(a.severity).short,
+                  Text(alertTypeLabel(a.type) ?? Sev.of(a.severity).short,
                       style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Sev.of(a.severity).ink)),
                 ]),
                 const SizedBox(height: 2),
@@ -174,7 +174,7 @@ class AlertDetail extends StatelessWidget {
       Text('${alert.worksiteName} · raised ${fmtDateTime(alert.timestamp)}', style: t.bodySmall),
       const SizedBox(height: 14),
       Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
-        SevChip(alert.severity, large: true, label: alert.type == 'data_quality' ? 'Data unavailable' : null),
+        SevChip(alert.severity, large: true, label: alertTypeLabel(alert.type)),
         if (current != null && current.category != alert.severity) ...[
           Text('now', style: t.bodySmall),
           SevChip(current.category),
@@ -187,12 +187,12 @@ class AlertDetail extends StatelessWidget {
         Wrap(spacing: 10, runSpacing: 10, children: [
           if (!alert.acknowledged)
             FilledButton(onPressed: s.dataIsLive ? () => _ack(context, s, alert) : null, child: const Text('Acknowledge')),
-          if (alert.type == 'heat_risk' && alert.acknowledged)
+          if ((alert.type == 'heat_risk' || alert.type == 'regulatory') && alert.acknowledged)
             FilledButton(
               onPressed: s.dataIsLive ? () => showInterventionForm(context, alert: alert) : null,
               child: const Text('Record intervention'),
             )
-          else if (alert.type == 'heat_risk')
+          else if (alert.type == 'heat_risk' || alert.type == 'regulatory')
             OutlinedButton(
               onPressed: s.dataIsLive ? () => showInterventionForm(context, alert: alert) : null,
               child: const Text('Record intervention'),
@@ -200,6 +200,12 @@ class AlertDetail extends StatelessWidget {
           if (alert.acknowledged)
             OutlinedButton(onPressed: s.dataIsLive ? () => _resolve(context, s, alert) : null, child: const Text('Resolve')),
         ]),
+      if (alert.type == 'escalation')
+        Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: Text('Handled in Worker health. The clinical outcome is recorded by the OHS role and closes this alert.',
+              style: t.bodySmall),
+        ),
       if (alert.resolution == 'conditions_improving' && !alert.resolved)
         Padding(
           padding: const EdgeInsets.only(top: 12),

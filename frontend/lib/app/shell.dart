@@ -6,6 +6,7 @@ import '../core/theme.dart';
 import '../features/alerts/alerts_page.dart';
 import '../features/crews/crews_page.dart';
 import '../features/demo/demo_guide.dart';
+import '../features/health/worker_health_page.dart';
 import '../features/interventions/interventions_page.dart';
 import '../features/monitoring/monitoring_page.dart';
 import '../features/overview/overview_page.dart';
@@ -37,6 +38,7 @@ const _items = [
   _NavItem('Live Monitoring', Icons.thermostat_outlined, 'Current conditions and crew assessments'),
   _NavItem('Alerts', Icons.notifications_none_rounded, 'Acknowledge and act on alerts', group: 'Act'),
   _NavItem('Interventions', Icons.healing_outlined, 'Protective actions taken and their effect'),
+  _NavItem('Worker health', Icons.monitor_heart_outlined, 'Consented wearable signals and symptom escalations'),
   _NavItem('Crews', Icons.groups_outlined, 'Work context used for each assessment', group: 'Manage'),
   _NavItem('Simulation Lab', Icons.science_outlined, 'Drive the simulated sensing station'),
   _NavItem('Reports', Icons.insert_chart_outlined, 'Performance, evaluation and exports'),
@@ -45,7 +47,7 @@ const _items = [
 
 // Indices used for in-app navigation
 class Nav {
-  static const overview = 0, monitoring = 1, alerts = 2, interventions = 3, crews = 4, lab = 5, reports = 6, settings = 7;
+  static const overview = 0, monitoring = 1, alerts = 2, interventions = 3, health = 4, crews = 5, lab = 6, reports = 7, settings = 8;
 }
 
 class Shell extends StatelessWidget {
@@ -56,6 +58,7 @@ class Shell extends StatelessWidget {
     MonitoringPage(),
     AlertsPage(),
     InterventionsPage(),
+    WorkerHealthPage(),
     CrewsPage(),
     SimulationLabPage(),
     ReportsPage(),
@@ -142,7 +145,9 @@ class _Sidebar extends StatelessWidget {
                 _NavTile(
                   item: _items[i],
                   selected: nav.index == i,
-                  badge: i == Nav.alerts && unack > 0 ? '$unack' : null,
+                  badge: i == Nav.alerts && unack > 0
+                      ? '$unack'
+                      : (i == Nav.health && state.openEscalations.isNotEmpty ? '${state.openEscalations.length}' : null),
                   onTap: () {
                     nav.go(i);
                     if (Scaffold.maybeOf(context)?.isDrawerOpen ?? false) Navigator.pop(context);
@@ -274,16 +279,18 @@ class _Header extends StatelessWidget {
         ),
         PopupMenuButton<String>(
           tooltip: 'Account',
-          icon: const CircleAvatar(radius: 15, backgroundColor: HG.subtle, child: Text('SV', style: TextStyle(color: HG.text, fontSize: 11.5, fontWeight: FontWeight.w600))),
+          icon: CircleAvatar(radius: 15, backgroundColor: state.isOhs ? const Color(0xFFDCEFEA) : HG.subtle, child: Text(state.isOhs ? 'OH' : 'SV', style: const TextStyle(color: HG.text, fontSize: 11.5, fontWeight: FontWeight.w600))),
           onSelected: (v) {
             if (v == 'worker') Navigator.of(context).pushNamed('/worker');
             if (v == 'settings') nav.go(Nav.settings);
+            if (v == 'role') state.setRole(state.isOhs ? 'supervisor' : 'ohs');
           },
-          itemBuilder: (_) => const [
-            PopupMenuItem(enabled: false, child: Text('Site Supervisor (demo role)')),
-            PopupMenuDivider(),
-            PopupMenuItem(value: 'worker', child: Text('Open worker view')),
-            PopupMenuItem(value: 'settings', child: Text('Methodology & governance')),
+          itemBuilder: (_) => [
+            PopupMenuItem(enabled: false, child: Text(state.isOhs ? 'OHS officer (demo role)' : 'Site Supervisor (demo role)')),
+            const PopupMenuDivider(),
+            PopupMenuItem(value: 'role', child: Text(state.isOhs ? 'Switch to supervisor' : 'Switch to OHS role (health data)')),
+            const PopupMenuItem(value: 'worker', child: Text('Open worker view')),
+            const PopupMenuItem(value: 'settings', child: Text('Methodology & governance')),
           ],
         ),
       ]),

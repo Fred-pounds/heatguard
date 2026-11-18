@@ -9,6 +9,17 @@
 
 ![HeatGuard overview](docs/screenshots/overview.png)
 
+## How HeatGuard meets the challenge outcomes
+
+| Desired outcome | What HeatGuard does |
+|---|---|
+| **Dynamic heat-risk assessment** | Environment (WBGT) + workload + clothing + acclimatization + work/rest schedule, per crew, against NIOSH limits. **Optional consented wearable signals** (heart rate, estimated core temperature) flag individual strain using NIOSH physiological criteria. A **trend outlook** projects when the limit will be reached and raises an early caution. |
+| **Clear, graded, multilingual warnings** | Five plain levels plus "unavailable". Actions: hydration, rest, cooling, work-intensity reduction, work/rest rotation, shift change, and **clinical escalation** (first aid or 998). The worker app is available in **English, Arabic, Urdu and Hindi**, with phone (browser) notifications. |
+| **Worker-first governance** | **Informed consent** with one-tap withdrawal that deletes data; pseudonymous badges; age band only; raw signals kept for 2 h; supervisors see crew counts only; an **OHS-only role** for individual values and symptoms; documented non-punitive use; UAE PDPL. |
+| **Field-ready operation** | Abu Dhabi heat and humidity scenarios, **shamal dust** (fouled globe and wick detected), **station and wearable battery**, network outages with edge buffering, PPE clothing adjustments. Every failure falls back to "unavailable", never "safe". |
+| **Supervisor decision support** | Crew and site views, the required work/rest schedule, outlook ("limit in ~25 min"), midday-break countdown, interventions with immediate reassessment, and no unnecessary clinical detail. |
+| **Safety and productivity measures** | Alert lead time, false-alarm and missed-alert rates (evaluation), **adherence to recommended controls**, **midday-break compliance**, **symptoms and incidents**, **emergency escalations**, **lost work time**, and acknowledgement times. |
+
 ## The problem
 
 In Abu Dhabi, summer air temperatures pass 45 °C and coastal humidity can stay high even in the early morning.
@@ -39,10 +50,14 @@ mornings and summer afternoons on site.
 | ![Demo guide](docs/screenshots/demo-guide.png) | ![Intervention](docs/screenshots/intervention.png) |
 | **Sensor failure: never shown as safe** | **Synthetic evaluation** |
 | ![Sensor failure](docs/screenshots/sensor-failure.png) | ![Evaluation](docs/screenshots/evaluation.png) |
+| **Worker health (OHS role): consented signals and escalations** | |
+| ![Worker health](docs/screenshots/worker-health.png) | |
 
-<img src="docs/screenshots/worker.png" alt="Worker view" width="260" align="right">
+<img src="docs/screenshots/worker-arabic.png" alt="Worker app in Arabic" width="260" align="right">
 
-**Worker view**: a crew-only, plain-language notice on a phone. It shows no individual data and does no tracking.
+**Worker app**: a plain-language notice on a phone, in English, Arabic, Urdu or Hindi (draft translations, with
+right-to-left layout). It includes optional wearable sharing with consent, an "I feel unwell / report a co-worker"
+button, and phone notifications when the level rises.
 
 > ⚠️ **All sensor data in this prototype are SIMULATED** by a built-in synthetic sensing station and labelled as
 > such throughout the UI, API and CSV exports. No physical hardware is required.
@@ -62,7 +77,7 @@ mornings and summer afternoons on site.
 | **Dashboard** | Flutter Web (Material 3, Provider, fl_chart): Overview, Live Monitoring, Crew Management, Alerts, Interventions, **Simulation Lab**, Reports (with evaluation and CSV), Settings (methodology and governance) |
 | **Worker view** | Mobile-friendly, crew-only, plain language, ready for translations |
 | **Persistence** | Firebase Realtime Database via a repository layer, or a local JSON store when no credentials are present; write-behind queue survives outages |
-| **Evaluation** | 10 repeatable synthetic cases compared with ground truth: lead time, false/missed alerts, false-safe minutes, completeness, stale detection, recovery |
+| **Evaluation** | 13 repeatable synthetic cases compared with ground truth: lead time, false/missed alerts, false-safe minutes, completeness, stale detection, recovery |
 
 ## Try it
 
@@ -133,7 +148,7 @@ and the Roboto font is bundled too, so the demo works without internet.
 ### Tests
 
 ```bash
-cd backend && python -m pytest app/tests -q          # unit, API and evaluation tests
+cd backend && python -m pytest app/tests -q          # 42 unit, API and evaluation tests
 ```
 
 ```bash
@@ -232,7 +247,8 @@ heatguard/
 * NIOSH RAL/REL apply to healthy workers. Metabolic rates are category estimates, and screening is a
   conservative approximation of a 1-hour TWA.
 * The simulator's physics is a consistency heuristic, not a validated thermal model.
-* The demo role header is not authentication. Translations (e.g. Arabic, Urdu, Hindi, Malayalam) need qualified native-speaker review
+* The demo role header is not authentication. The Arabic, Urdu and Hindi texts are drafts that need qualified native-speaker review
+  before use. The wearable physiology is a simple synthetic model; real devices and their core-temperature estimates must be validated
   before use.
 * Not a medical device. It does not diagnose, predict illness or clear workers to resume work.
 
@@ -245,6 +261,7 @@ heatguard/
 - [x] Structured, explained assessments; missing data → incomplete; sensor and network failure handled safely
 - [x] Alerts generated, acknowledged, escalated, resolved with notes; interventions recorded with follow-up
 - [x] Live dashboard, trends, interactive Simulation Lab, reports, CSV export, SIMULATED labelling
-- [x] Methodology documentation; backend, frontend and Firebase-emulator tests in CI; evaluation suite (10 cases / 27 checks passing)
+- [x] Methodology documentation; backend, frontend and Firebase-emulator tests in CI; evaluation suite (13 cases / 35 checks passing)
 - [x] Guided in-app demo mode; Docker image and Render blueprint for a hosted link
+- [x] Consented wearable signals, symptom escalation, OHS role, multilingual worker app (EN/AR/UR/HI), dust and battery handling, trend outlook, safety and productivity metrics
 - [x] Abu Dhabi localization: UAE climate scenarios, MoHRE midday-break compliance rule, GST site time, 998 ambulance, UAE PDPL

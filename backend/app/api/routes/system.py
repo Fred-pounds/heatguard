@@ -130,7 +130,7 @@ async def worker_notice(crew_id: str, svc: HeatGuardService = Depends(get_servic
     regime = crew["work_rest_regime"]
     reg = next((r for r in svc.guideline.regimes if r["id"] == regime), None)
     actions = [{"action": t, "key": f"worker_action.{cat}.{i}"} for i, t in enumerate(WORKER_ACTIONS[cat])]
-    active_ivs = [{"action_label": i["action_label"], "start_time": i["start_time"]}
+    active_ivs = [{"action": i["action"], "action_label": i["action_label"], "start_time": i["start_time"]}
                   for i in svc.repo.interventions.values() if i["crew_id"] == crew_id and i["status"] == "active"]
     return {
         "crew_name": crew["name"],
@@ -142,6 +142,7 @@ async def worker_notice(crew_id: str, svc: HeatGuardService = Depends(get_servic
         "updated_at": a["timestamp"] if a else None,
         "sim_clock": a.get("sim_clock") if a else None,
         "work_rest": reg["label"] if reg and regime != "continuous" else None,
+        "work_rest_id": regime if regime != "continuous" else None,
         "actions": actions,
         "active_protective_actions": active_ivs,
         "water_reminder": cat != "routine",

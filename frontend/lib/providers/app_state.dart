@@ -32,6 +32,14 @@ class AppState extends ChangeNotifier {
   List<Intervention> interventions = [];
   List<Reading> readings = [];
   List<J> scenarios = [];
+  J workersSummary = {}; // crew_id -> crew-level counts (no individual values)
+  List<J> escalations = []; // redacted for supervisors, full for OHS
+  List<J> workers = []; // OHS only: individual signals
+  J workerCatalog = {};
+
+  /// Demo role. Supervisors see crew-level information; the OHS role sees individual health data.
+  String role = 'supervisor';
+  bool get isOhs => role == 'ohs';
 
   // ---- UI selections
   String? selectedWorksiteId;
@@ -100,6 +108,7 @@ class AppState extends ChangeNotifier {
       if (meta.isEmpty) {
         meta = jMap(await api.get('/meta'));
         scenarios = jList(meta['scenarios']);
+        workerCatalog = jMap(await api.get('/workers/catalog'));
       }
       final results = await Future.wait([
         api.get('/overview'),
@@ -107,6 +116,8 @@ class AppState extends ChangeNotifier {
         api.get('/assessments/latest'),
         api.get('/alerts'),
         api.get('/interventions'),
+        api.get('/workers/summary'),
+        api.get('/escalations'),
       ]);
       overview = jMap(results[0]);
       simulation = jMap(overview['simulation']);
@@ -116,6 +127,9 @@ class AppState extends ChangeNotifier {
       assessments = jList(results[2]).map(Assessment.new).toList();
       alerts = jList(results[3]).map(Alert.new).toList();
       interventions = jList(results[4]).map(Intervention.new).toList();
+      workersSummary = jMap(results[5]);
+      escalations = jList(results[6]);
+      workers = isOhs ? jList(await api.get('/workers')) : [];
       if (selectedWorksiteId != null) {
         readings = jList(await api.get('/sensors/readings', {
           'worksite_id': selectedWorksiteId,
@@ -137,6 +151,18 @@ class AppState extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  void setRole(String r) {
+    role = r;
+    api.role = r;
+    workers = [];
+    escalations = [];
+    notifyListeners();
+    _busy = false;
+    refresh();
+  }
+
+  List<J> get openEscalations => escalations.where((e) => e['status'] != 'closed').toList();
 
   void selectWorksite(String? id) {
     selectedWorksiteId = id;

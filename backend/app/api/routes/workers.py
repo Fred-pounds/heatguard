@@ -38,7 +38,8 @@ async def list_workers(svc: HeatGuardService = Depends(get_service)):
 
 @router.get("/worker/badges/{crew_id}")
 async def badges(crew_id: str, svc: HeatGuardService = Depends(get_service)):
-    return [{"worker_id": w["worker_id"], "badge": w["badge"]} for w in svc.workers.workers_for_crew(crew_id)]
+    return [{"worker_id": w["worker_id"], "badge": w["badge"], "sharing": w["consent"]["status"] == "granted"}
+            for w in svc.workers.workers_for_crew(crew_id)]
 
 
 @router.get("/worker/me/{worker_id}")

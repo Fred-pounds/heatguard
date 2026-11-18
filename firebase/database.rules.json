@@ -41,9 +41,20 @@
     "system_health": {
       ".read": "auth != null"
     },
-    "individual_health": {
-      ".read": false,
-      ".write": false
+    "workers": {
+      ".read": "auth != null && (auth.token.role === 'ohs' || auth.token.role === 'admin')",
+      "$worker_id": {
+        ".read": "auth != null && auth.token.role === 'worker' && auth.token.worker_id === $worker_id"
+      }
+    },
+    "worker_status": {
+      ".read": "auth != null && (auth.token.role === 'ohs' || auth.token.role === 'admin')"
+    },
+    "escalations": {
+      ".read": "auth != null && (auth.token.role === 'ohs' || auth.token.role === 'admin')"
+    },
+    "meta": {
+      ".read": "auth != null && (auth.token.role === 'supervisor' || auth.token.role === 'ohs' || auth.token.role === 'admin')"
     }
   }
 }

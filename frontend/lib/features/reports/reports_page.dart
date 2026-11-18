@@ -91,7 +91,7 @@ class _ReportsPageState extends State<ReportsPage> {
   @override
   Widget build(BuildContext context) {
     final nav = context.watch<NavController>();
-    if (nav.index == 6 && (fetchedAt == null || DateTime.now().difference(fetchedAt!) > const Duration(seconds: 8)) && !loading) {
+    if (nav.index == Nav.reports && (fetchedAt == null || DateTime.now().difference(fetchedAt!) > const Duration(seconds: 8)) && !loading) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _load());
     }
     final s = summary;
@@ -157,7 +157,32 @@ class _ReportsPageState extends State<ReportsPage> {
     final env = jMap(s['environment']);
     final ack = jMap(al['acknowledgement_time_seconds']);
     final rec = jMap(con['recovery_time_seconds']);
+    final sf = jMap(s['safety']);
+    final adh = jMap(sf['adherence_to_controls']);
+    final comp = jMap(sf['midday_break_compliance']);
+    final sym = jMap(sf['symptoms_and_incidents']);
+    final esc = jMap(sf['escalations']);
+    final lost = jMap(sf['lost_work_time']);
+    final escAck = jMap(esc['time_to_acknowledge_seconds']);
     return [
+      SectionCard(
+        title: 'Safety and productivity',
+        subtitle: 'The measures the challenge asks for. Lead time and false-alarm rate are in the Evaluation view.',
+        child: ResponsiveGrid(minItemWidth: 300, children: [
+          StatCard(label: 'Adherence to recommended controls', value: pct(adh['rate']),
+              footnote: '${adh['with_protective_control']} of ${adh['serious_heat_alerts']} Elevated+ alerts had a protective action'),
+          StatCard(label: 'Midday-break compliance', value: pct(comp['rate']),
+              footnote: '${comp['with_recorded_action']} of ${comp['alerts']} midday-break alerts with a recorded action'),
+          StatCard(label: 'Symptom reports', value: '${sym['reports'] ?? 0}',
+              footnote: '${sym['first_aid']} first aid · ${sym['emergency']} emergency · ${sym['worker_strain_checks']} wearable checks'),
+          StatCard(label: 'Escalations', value: '${esc['total'] ?? 0}',
+              footnote: '${esc['open']} open · ${esc['emergency_calls']} ambulance calls · median ack ${fmtDuration(escAck['median'] as num?)}'),
+          StatCard(label: 'Lost work time', value: '${lost['total_worker_hours'] ?? 0} worker-h',
+              footnote: 'rest ${lost['rest_breaks_worker_hours']} · midday ${lost['midday_break_worker_hours']} · breaks ${lost['intervention_breaks_worker_hours']}'),
+          StatCard(label: 'Alert acknowledgement', value: fmtDuration(ack['median'] as num?),
+              footnote: 'median · ${ack['count']} acknowledged'),
+        ]),
+      ),
       ResponsiveGrid(minItemWidth: 300, children: [
         StatCard(label: 'Alerts raised', value: '${al['total'] ?? 0}', footnote: '${al['duplicates_suppressed']} duplicate repeats suppressed'),
         StatCard(label: 'Median ack. time', value: fmtDuration(ack['median'] as num?), 

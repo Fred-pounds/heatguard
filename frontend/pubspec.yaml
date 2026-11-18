@@ -67,6 +67,16 @@ flutter:
           weight: 700
         - asset: assets/fonts/Roboto-Black.ttf
           weight: 900
+    - family: NotoSansArabic
+      fonts:
+        - asset: assets/fonts/NotoSansArabic_400Regular.ttf
+        - asset: assets/fonts/NotoSansArabic_700Bold.ttf
+          weight: 700
+    - family: NotoSansDevanagari
+      fonts:
+        - asset: assets/fonts/NotoSansDevanagari_400Regular.ttf
+        - asset: assets/fonts/NotoSansDevanagari_700Bold.ttf
+          weight: 700
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

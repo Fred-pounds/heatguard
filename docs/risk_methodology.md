@@ -178,7 +178,56 @@ bundled here because they were not verified for this prototype. Add them as a gu
 WBGT (70 % weight). The *Humid coastal morning* scenario shows high heat stress at air temperatures of only
 33–37 °C.
 
-## 10. Limitations
+## 10. Optional consented worker signals
+
+* **Participation** is opt-in per worker from the worker app, with a plain-language notice covering purpose, who
+  sees what, 2-hour retention, no disciplinary use, and withdrawal at any time. Withdrawal deletes held signals
+  immediately and removes the age band.
+* **Identity** is a pseudonymous badge (for example CA-02) linked to a device, with no names or employee numbers.
+  The age band is collected only to apply the heart-rate threshold.
+* **Criteria** come from NIOSH 2016's physiological monitoring guidance:
+  * Heart rate sustained above **180 − age** (bpm) for 3 or more minutes. The upper bound of the age band is used,
+    which is conservative.
+  * Core temperature at or above **38.5 °C** for acclimatized crews, or **38.0 °C** otherwise. The wearable value is a
+    device *estimate* and is labelled as such.
+* **Output:** a "worker check" alert naming the badge for supervisors, with no values. Individual values are
+  visible only to the **OHS role**. A missing or stale signal reverts that worker to the crew-level assessment.
+* **Simulation:** the wearable physiology is a documented synthetic heuristic (`simulator/heatguard_sim/wearable.py`),
+  not a validated model.
+
+## 11. Symptom check-in and clinical escalation
+
+Workers, co-workers or supervisors can report symptoms.
+
+* **Emergency path:** confusion or slurred speech, fainting or collapse, hot dry skin or stopped sweating, or a
+  seizure. These start the 998 emergency path with immediate cooling.
+* **First-aid path:** other symptoms (dizziness, headache, nausea, cramps, heavy sweating, unusual tiredness)
+  request a first-aid check.
+
+Supervisors see the level and badge, without the symptoms, and can acknowledge or mark a responder as on the way.
+Only the OHS role records the outcome: first aid given, clinic, ambulance, or observed. There is deliberately no
+"cleared to work" outcome.
+
+## 12. Trend outlook
+
+A least-squares slope over the last 30 minutes of valid WBGT readings is projected forward, capped at 2 hours.
+The projection is labelled and is not a weather forecast.
+
+* **Early caution:** if a crew is still Routine but the projection reaches its limit within 30 minutes, the
+  category becomes Caution, with the advice to move heavy tasks earlier or start rotation.
+* **Midday-break countdown:** outdoor crews in the summer season get a countdown in the last hour before 12:30.
+
+## 13. Field conditions
+
+* **Wick plausibility:** natural wet-bulb must sit between the psychrometric wet-bulb (from temperature and RH,
+  Stull 2011) minus 1.5 °C and plus 3.5 °C. Outside that range, the wick is treated as dry or fouled and the reading
+  is rejected.
+* **Dust:** a station dust index of 0.5 or more marks the globe and wick unreliable, because a dusty globe
+  *under*-reads radiant heat (a hidden false-safe risk). A maintenance alert asks for cleaning.
+* **Battery:** below 25% raises a maintenance alert. A dead station is detected as stale data. A wearable battery
+  below 15% is flagged.
+
+## 14. Limitations
 
 * RAL/REL apply to healthy workers. Individual susceptibility is not assessed.
 * Metabolic rates are category estimates.

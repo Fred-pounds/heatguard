@@ -58,3 +58,13 @@ String siteTime(String? clock, {String? date}) {
   final d = DateTime.tryParse(date);
   return d == null ? '$clock GST' : '${DateFormat('d MMM').format(d)}, $clock GST';
 }
+
+/// Plain label for an alert's type (shown instead of the severity word where clearer).
+String? alertTypeLabel(String type) => switch (type) {
+      'data_quality' => 'Data unavailable',
+      'worker_check' => 'Worker check',
+      'escalation' => 'Escalation',
+      'maintenance' => 'Maintenance',
+      'regulatory' => 'Midday break',
+      _ => null,
+    };

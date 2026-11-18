@@ -23,7 +23,7 @@
  └───────────────────────────────▲────────────────────────────────────────────────────────┘
                                  │ REST (polled every 2 s)
                      FLUTTER WEB APP (frontend/lib)
-                 Supervisor dashboard        Worker view (/#/worker)
+                 Supervisor / OHS dashboard   Worker app (/#/worker, EN/AR/UR/HI)
 ```
 
 ## Components
@@ -37,6 +37,7 @@
 | WBGT | `services/wbgt_calculator.py` | ISO 7243 / NIOSH formulas |
 | Risk engine | `services/risk_engine.py`, `services/guideline.py` | Pure function of reading + context + guideline → explained assessment |
 | UAE rules | `services/regulatory.py`, `guidelines/uae_midday_break.json` | Midday-break compliance flag, urgent action and site-level alert; independent of the NIOSH category |
+| Worker signals & escalation | `services/worker_service.py`, `api/routes/workers.py`, `simulator/heatguard_sim/wearable.py` | Consent, pseudonymous badges, NIOSH physiological criteria, symptom escalation, OHS-only access |
 | Alerts | `services/alert_engine.py` | Raise, suppress duplicates, escalate severity, re-acknowledgement, escalation of unacknowledged alerts, sustained-improvement review; never auto-resolves |
 | Interventions | `services/intervention_service.py` | Records actions, applies optional context changes, baseline + follow-up assessments, outcome |
 | Orchestration | `services/heatguard_service.py` | Ingestion pipeline, staleness detection, events, health, async loop |
@@ -79,6 +80,9 @@ reading was received (default 15 s), so a stopped or disconnected station is det
 /alerts/{alert_id}
 /interventions/{intervention_id}
 /events/{event_id}                    (sensor / connectivity / simulation events)
+/workers/{worker_id}                  (pseudonymous badge, consent, age band; OHS only)
+/worker_status/{worker_id}            (latest strain flags, no raw signals; OHS only)
+/escalations/{escalation_id}          (symptom reports and outcomes; OHS only)
 /simulation
 /system_health
 /evaluation

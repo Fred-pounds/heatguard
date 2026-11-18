@@ -19,13 +19,36 @@ class OverviewPage extends StatelessWidget {
     final s = context.watch<AppState>();
     final nav = context.read<NavController>();
     final c = s.counts;
-    final attention = s.assessments.where((a) => Sev.of(a.category).needsAttention || a.middayBreak).toList()
+    final attention = s.assessments.where((a) => Sev.of(a.category).needsAttention || a.middayBreak || ((a.workerSignals?['checks_needed'] as num?) ?? 0) > 0).toList()
       ..sort((a, b) => _rank(b).compareTo(_rank(a)));
     final ok = s.assessments.length - attention.length;
     final ws = s.selectedWorksite;
     final sensorsOk = s.worksites.every((w) => w.sensorStatus == 'ok');
 
+    final esc = s.openEscalations;
     return PageBody(children: [
+      if (esc.isNotEmpty)
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(children: [
+              const Icon(Icons.medical_services_outlined, color: HG.text),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  esc.any((e) => e['level'] == 'emergency')
+                      ? 'Emergency escalation open: ${esc.firstWhere((e) => e['level'] == 'emergency')['crew_name']}. Call 998 and the first aider.'
+                      : '${esc.length} symptom report${esc.length == 1 ? '' : 's'} awaiting first aid.',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              SevChip(esc.any((e) => e['level'] == 'emergency') ? 'critical' : 'high', short: true,
+                  label: esc.any((e) => e['level'] == 'emergency') ? 'Emergency' : 'First aid'),
+              const SizedBox(width: 12),
+              FilledButton(onPressed: () => nav.go(Nav.health), child: const Text('Open')),
+            ]),
+          ),
+        ),
       _StatusHero(attention: attention, okCount: ok, onReview: () => nav.go(Nav.alerts)),
       ResponsiveGrid(minItemWidth: 200, children: [
         StatCard(label: 'Unacknowledged alerts', value: '${c['unacknowledged_alerts'] ?? 0}',
@@ -141,6 +164,8 @@ class _StatusHero extends StatelessWidget {
   }
 
   String _reason(Assessment a) {
+    final w = a.workerSignals;
+    if (w != null && (w['checks_needed'] as num? ?? 0) > 0) return 'Wearable strain signal: check on badge ${(w['check_badges'] as List).join(', ')} now';
     if (a.middayBreak) return 'UAE midday break in force: no outdoor work in direct sun until 15:00';
     if (a.level < 0) return 'Data missing or stale - conditions cannot be confirmed';
     final l = a.limit;

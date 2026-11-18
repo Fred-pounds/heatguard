@@ -425,6 +425,40 @@ class _SimulationLabPageState extends State<SimulationLabPage> {
         ),
       ),
       block(
+        'Station battery',
+        st['battery_fault'] == true
+            ? 'Battery failing: ${fmtNum(st['battery_pct'], digits: 0)}% left. A warning appears below 25%; at 0% the station stops.'
+            : 'Battery ${fmtNum(st['battery_pct'], digits: 0)}% (solar charged). Simulate a failing battery or panel.',
+        active: st['battery_fault'] == true,
+        Align(
+          alignment: Alignment.centerLeft,
+          child: st['battery_fault'] == true
+              ? FilledButton(onPressed: () => _do((a) => a.post('/simulation/battery-fault', {'worksite_id': ws.id, 'enabled': false}), 'Battery replaced'), child: const Text('Replace battery'))
+              : OutlinedButton(onPressed: () => _do((a) => a.post('/simulation/battery-fault', {'worksite_id': ws.id, 'enabled': true}), 'Battery failing'), child: const Text('Fail battery')),
+        ),
+      ),
+      block(
+        'Dust (shamal)',
+        (jNum(st['dust_index']) ?? 0) > 0.05
+            ? 'Dust fouling ${(100 * (jNum(st['dust_index']) ?? 0)).toStringAsFixed(0)}%. Heavy fouling makes readings unreliable, so assessments become unavailable.'
+            : 'Dust coats the globe and dries the wick. HeatGuard must detect it and ask for cleaning.',
+        active: (jNum(st['dust_index']) ?? 0) > 0.05,
+        Align(
+          alignment: Alignment.centerLeft,
+          child: (jNum(st['dust_index']) ?? 0) > 0.05
+              ? FilledButton(onPressed: () => _do((a) => a.post('/simulation/dust', {'worksite_id': ws.id, 'enabled': false}), 'Station cleaned'), child: const Text('Clean station'))
+              : OutlinedButton(onPressed: () => _do((a) => a.post('/simulation/dust', {'worksite_id': ws.id, 'enabled': true}), 'Dust event started'), child: const Text('Start dust event')),
+        ),
+      ),
+      block(
+        'Worker strain (consented wearable)',
+        'Make one consenting worker in ${s.crewById(crewId ?? '')?.name ?? 'the selected crew'} show sustained high heart rate (choose the crew in the Crew tab).',
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          OutlinedButton(onPressed: () => _strain(1.0), child: const Text('Simulate strain')),
+          TextButton(onPressed: () => _strain(0.0), child: const Text('Recover')),
+        ]),
+      ),
+      block(
         'Database outage',
         'Writes are queued, not lost. Pending: ${s.health['pending_sync_writes'] ?? 0}',
         active: dbOutage,
@@ -436,6 +470,25 @@ class _SimulationLabPageState extends State<SimulationLabPage> {
         ),
       ),
     ]);
+  }
+
+  Future<void> _strain(double level) async {
+    final s = context.read<AppState>();
+    if (crewId == null) return;
+    try {
+      final badges = jList(await s.api.get('/worker/badges/$crewId')).where((b) => b['sharing'] == true).toList();
+      if (badges.isEmpty) {
+        if (mounted) showResult(context, 'No consenting wearable users in this crew', '');
+        return;
+      }
+      final targets = level > 0 ? [badges.first] : badges;
+      for (final b in targets) {
+        await s.api.post('/simulation/worker-strain', {'worker_id': b['worker_id'], 'level': level});
+      }
+      if (mounted) showResult(context, null, level > 0 ? 'Badge ${badges.first['badge']}: strain simulated' : 'Workers recovered');
+    } catch (e) {
+      if (mounted) showResult(context, '$e', '');
+    }
   }
 
   // ------------------------------------------------------------------ results

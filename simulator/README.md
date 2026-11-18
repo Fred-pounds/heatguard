@@ -16,7 +16,11 @@
 7. Faults: `missing` (no value) or `invalid` (−127 °C, a typical disconnected-probe sentinel), per probe or for
    the whole station; they can be scheduled (Scenario E) or triggered manually.
 8. Network outage: readings are queued in an edge buffer (up to 720) and delivered with `late_sync=true` on recovery.
-9. After a scenario's duration the profile runs backwards (ping-pong), so a long demo has no jumps.
+9. Station battery: about 92 % at start, slowly charging in sun; a battery fault drains 3 %/min and the station
+   goes silent at 2 % or below.
+10. Dust fouling (`dust_index` 0–1): the globe under-reads radiant heat, `Tdb + (Tg − Tdb)·(1 − 0.5·dust)`, and the
+    wick dries toward air temperature, `+0.85·dust·(Tdb − Tnwb)`. Cleaning resets it.
+11. After a scenario's duration the profile runs backwards (ping-pong), so a long demo has no jumps.
 
 These are consistency heuristics for demonstration and **not a validated thermal model**. Every reading carries
 `data_origin: "SIMULATED"`. `ground_truth` (noise-free values) is used only by the evaluation module and is
@@ -32,9 +36,17 @@ never sent to clients.
 | F | `humid_coastal` | 10 Aug | outdoor | Gulf-coast morning, humidity above 80 %; WBGT about 32–34.5 °C at only 33–37 °C air |
 | D | `industrial_indoor` | 10 Aug | indoor | Metal-processing hall, partial cooling, furnace radiant heat; WBGT about 28–30 °C |
 | E | `sensor_failure` | 25 Sep | outdoor | Globe drop-out (min 15–30), invalid wet-bulb (40–55), full outage (70–85) |
+| G | `dust_storm` | 20 Jun | outdoor | Shamal: strong north-westerly wind, dust accumulates on globe and wick |
 
 Every reading carries `sim_date` and `sim_clock` (Gulf Standard Time), which the backend uses for the UAE
 midday-break rule.
+
+## Virtual wearables (consented workers only)
+
+`heatguard_sim/wearable.py` produces heart rate, an estimated core temperature and battery level for workers who
+have consented. Heart rate is `72 + workload load × work fraction + 2.5·max(0, WBGT_eff − limit) + personal offset
++ 45·strain + noise`, and core temperature follows it with lag. This is a simple synthetic heuristic, not a
+physiological model. The Simulation Lab's **worker strain** control adds strain to one badge.
 
 ## Standalone client
 

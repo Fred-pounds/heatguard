@@ -1,6 +1,6 @@
 # Five-minute demonstration
 
-The easiest way to present is the built-in **Demo guide** (button in the top bar). It lists the 14 steps below,
+The easiest way to present is the built-in **Demo guide** (button in the top bar). It lists the 17 steps below,
 shows a talk track for each one, and its button performs the step and opens the right screen. You can also click
 through by hand; the steps work the same way.
 
@@ -20,11 +20,14 @@ through by hand; the steps work the same way.
 | 7 | A protective alert is raised | Open alerts | Explanation, recommended actions, duplicate suppression, no auto-clear |
 | 8 | Acknowledge the alert | Acknowledge Crew A alert | Acknowledgement recorded in the alert history |
 | 9 | Record an intervention | Record rotation | 15/45 rotation and lighter tasks; immediate reassessment (High to Routine) |
-| 10 | Trigger a sensor failure | Break the globe sensor | "Assessment unavailable" (purple, never green), gap in the chart, data alert |
-| 11 | Restore the sensor | Restore | Assessments resume; the alert stays open for supervisor review |
-| 12 | UAE midday break | Jump to 12:35 in July | Compliance flag and "Midday break" alert: no outdoor work in direct sun 12:30-15:00, 15 Jun-15 Sep |
-| 13 | Show the evaluation | Run evaluation | 10 synthetic cases (incl. humid coast and midday break), 27 checks, 0 "false safe" minutes |
-| 14 | Worker view | Open worker view | Crew-only, plain-language notice with water, rest and emergency guidance |
+| 10 | Wearable strain, with consent | Simulate strain on CA-02 | Consented worker's sustained high heart rate: supervisor sees "check on badge CA-02", never the values |
+| 11 | A worker reports symptoms | Report dizziness (Rebar B) | First-aid escalation raised from the worker app; emergency signs would trigger 998 |
+| 12 | OHS view: who sees what | Switch to OHS role | Symptoms and signal values appear only for the OHS role, which records the outcome |
+| 13 | Shamal dust storm | Start dust event | Fouled globe and wick detected: maintenance alert, "unavailable", never green |
+| 14 | Clean the station | Clean station | Assessments resume; battery failure is handled the same way |
+| 15 | UAE midday break | Jump to 12:35 in July | Compliance flag and "Midday break" alert: no outdoor work in direct sun 12:30-15:00, 15 Jun-15 Sep |
+| 16 | Show the evaluation | Run evaluation | 13 synthetic cases (incl. dust, battery, worker strain, midday break), 35 checks, 0 "false safe" minutes |
+| 17 | Worker view | Open worker view | Crew-only, plain-language notice with water, rest and emergency guidance |
 
 **Back-up:** if the network is slow, every step still works offline on a laptop: the dashboard and fonts are
 bundled and no external APIs are used. In the **Simulation Lab**, **+1 min** advances time manually.

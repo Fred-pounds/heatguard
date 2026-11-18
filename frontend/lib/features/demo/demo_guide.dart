@@ -175,23 +175,54 @@ final demoSteps = <DemoStep>[
     },
   ),
   DemoStep(
-    'Trigger a sensor failure',
-    '"Now the globe sensor fails. HeatGuard does not guess and does not show green. It marks the assessment as unavailable, '
-        'shows the last valid result as history, and raises a data alert."',
-    'Break the globe sensor',
+    'Wearable strain, with consent',
+    '"Four workers in Crew A chose to share wearable data. Badge CA-02 now shows a sustained high heart rate (NIOSH: above 180 minus age). '
+        'The supervisor sees only the badge to check on, never the values."',
+    'Simulate strain on CA-02',
     (ctx, api, nav) async {
-      await api.post('/simulation/sensor-failure', {..._json, 'sensor': 'globe', 'mode': 'missing'});
-      await _steps(api, 1);
+      await api.post('/simulation/worker-strain', {'worker_id': 'wk_ca02', 'level': 1.0});
+      await _steps(api, 4);
+      nav.go(Nav.health);
+    },
+  ),
+  DemoStep(
+    'A worker reports symptoms',
+    '"A worker taps \u201cI feel unwell\u201d in their own language. A first-aid escalation is raised at once. Confusion or collapse would trigger the 998 emergency path."',
+    'Report dizziness (Rebar B)',
+    (ctx, api, nav) async {
+      await api.post('/symptoms', {'crew_id': 'crew_rebar_b', 'worker_id': 'wk_rb01', 'reported_by': 'self', 'symptoms': ['dizziness', 'headache']});
+      nav.go(Nav.health);
+    },
+  ),
+  DemoStep(
+    'OHS view: who sees what',
+    '"Switching to the occupational health role shows the symptoms and signal values. Supervisors never see them. The OHS officer records the outcome; '
+        'there is no \u201ccleared to work\u201d button."',
+    'Switch to OHS role',
+    (ctx, api, nav) async {
+      ctx.read<AppState>().setRole('ohs');
+      nav.go(Nav.health);
+    },
+  ),
+  DemoStep(
+    'Shamal dust storm',
+    '"Back to the supervisor. A shamal coats the globe and dries the wick. HeatGuard spots the fouled sensor, asks for maintenance and shows \u201cunavailable\u201d rather than a misleading reading."',
+    'Start dust event',
+    (ctx, api, nav) async {
+      ctx.read<AppState>().setRole('supervisor');
+      await api.post('/simulation/worker-strain', {'worker_id': 'wk_ca02', 'level': 0.0});
+      await api.post('/simulation/dust', {..._json, 'enabled': true});
+      await _steps(api, 10);
       nav.go(Nav.monitoring);
     },
   ),
   DemoStep(
-    'Restore the sensor',
-    '"When the sensor comes back, assessments resume. The earlier alert stays open until a supervisor reviews it."',
-    'Restore',
+    'Clean the station',
+    '"After cleaning, readings are trusted again and assessments resume. Low battery is handled the same way: a warning first, then \u201cunavailable\u201d, never green."',
+    'Clean station',
     (ctx, api, nav) async {
-      await api.post('/simulation/sensor-restore', _json);
-      await _steps(api, 1);
+      await api.post('/simulation/dust', {..._json, 'enabled': false});
+      await _steps(api, 2);
     },
   ),
   DemoStep(
@@ -207,8 +238,8 @@ final demoSteps = <DemoStep>[
   ),
   DemoStep(
     'Show the evaluation',
-    '"Finally, we test HeatGuard on 8 repeatable synthetic scenarios against ground truth: early warning, no missed alerts, '
-        'and zero minutes showing safe while data were missing. This is software verification, not clinical validation."',
+    '"Finally, 13 repeatable synthetic scenarios, including dust, battery failure and worker strain, are checked against ground truth: '
+        'early warning, no missed alerts, and zero minutes showing safe while data were missing. Software verification, not clinical validation."',
     'Run evaluation',
     (ctx, api, nav) async {
       await api.post('/evaluation/run');
@@ -219,7 +250,7 @@ final demoSteps = <DemoStep>[
   ),
   DemoStep(
     'Worker view',
-    '"Workers see only their crew\'s notice in plain language: water, rest and emergency guidance. No tracking and no individual data."',
+    '"Workers get their crew\'s notice in English, Arabic, Urdu or Hindi, can opt in or out of wearable sharing, and can report symptoms. No tracking."',
     'Open worker view',
     (ctx, api, nav) async => Navigator.of(ctx).pushNamed('/worker'),
   ),

@@ -78,6 +78,8 @@ extension type Assessment(J j) {
   List<String> get limitations => (j['limitations'] as List? ?? []).cast<String>();
   String get origin => j['data_origin'] ?? 'SIMULATED';
   List<J> get regulatoryFlags => jList(j['regulatory_flags']);
+  J get outlook => jMap(j['outlook']);
+  J? get workerSignals => j['worker_signals'] == null ? null : jMap(j['worker_signals']);
   bool get middayBreak => regulatoryFlags.isNotEmpty;
   Crew? get crew => j['crew'] == null ? null : Crew(jMap(j['crew']));
 }
@@ -109,6 +111,7 @@ extension type Alert(J j) {
   int get improvingStreak => (j['improving_streak'] as num?)?.toInt() ?? 0;
   String? get latestCategory => j['latest_category'];
   List<String> get interventionIds => (j['intervention_ids'] as List? ?? []).cast<String>();
+  String? get escalationId => j['escalation_id'];
   List<J> get history => jList(j['history']);
 }
 
