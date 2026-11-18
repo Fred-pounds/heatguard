@@ -326,24 +326,26 @@ class RiskEngine:
 
     def _explain(self, category: str, crew: Crew, d: LimitDetails, solar: bool, site: Worksite) -> str:
         work = WORKLOAD_LABELS[crew.workload]
-        accl = {"acclimatized": "acclimatized", "not_acclimatized": "unacclimatized", "unknown": "unknown-acclimatization"}[crew.acclimatization]
-        regime = self.g.regime(d.current_regime)["label"].lower()
-        env = "outdoor conditions with direct sun" if solar else ("indoor conditions" if site.environment == "indoor" else "shaded outdoor conditions")
-        article = "an" if accl[0] in "aeiou" else "a"
-        base = (f"Effective WBGT of {d.effective_wbgt:.1f} °C in {env} for {article} {accl} crew doing {work} work "
-                f"({regime}); applicable {d.limit_type} is {d.limit_at_current_regime:.1f} °C.")
+        who = {
+            "acclimatized": "an acclimatized crew",
+            "not_acclimatized": "an unacclimatized crew",
+            "unknown": "a crew whose acclimatization is unknown",
+        }[crew.acclimatization]
+        where = "in direct sun" if solar else ("indoors" if site.environment == "indoor" else "in shade")
+        limit_name = "exposure limit (REL)" if d.limit_type == "REL" else "alert limit (RAL)"
+        schedule = "" if d.current_regime == "continuous" else f" with the current {self.g.regime(d.current_regime)['label'].lower()} schedule"
+        base = (f"Effective WBGT is {d.effective_wbgt:.1f} °C {where}. For {work} work by {who}, the {limit_name} is "
+                f"{d.limit_at_current_regime:.1f} °C{schedule}.")
+        over = -d.margin_to_limit
         if category == "routine":
-            return base + f" Exposure is {d.margin_to_limit:.1f} °C below the limit: continue routine monitoring."
+            return base + f" Conditions are {d.margin_to_limit:.1f} °C below the limit. Continue routine monitoring."
         if category == "caution":
-            return base + f" Exposure is within {self.g.caution_margin:.1f} °C of the limit: conditions are approaching the limit."
+            return base + f" Conditions are within {self.g.caution_margin:.1f} °C of the limit and approaching it."
         if category == "critical":
-            return base + (" The limit is exceeded even with a 15 min work / 45 min rest regime, so work/rest scheduling alone "
-                           "cannot keep exposure within the guideline: strenuous work should be stopped or postponed and "
-                           "additional controls applied.")
-        req = self.g.regime(d.required_regime)["label"] if d.required_regime else ""
-        extra = " combined with the protective RAL" if crew.acclimatization != "acclimatized" else ""
-        return base + (f" The limit is exceeded by {-d.margin_to_limit:.1f} °C{extra}; at least a {req.lower()} regime "
-                       f"(or equivalent workload reduction) is needed to remain within the guideline.")
+            return base + (f" The limit is exceeded by {over:.1f} °C. Even a 15 min work / 45 min rest schedule would not be enough, "
+                           "so strenuous work should stop or be postponed and other controls added.")
+        req = self.g.regime(d.required_regime)["label"].lower() if d.required_regime else ""
+        return base + f" The limit is exceeded by {over:.1f} °C. Use at least a {req} schedule, or reduce the workload."
 
     def _recommend(self, category: str, crew: Crew, d: LimitDetails, clothing: dict, solar: bool, site: Worksite) -> list[RecommendedAction]:
         a: list[RecommendedAction] = []
@@ -364,12 +366,12 @@ class RiskEngine:
                                     priority="advised", source=NIOSH)]
         else:
             water.priority = "required"
-            a.append(water)
             if category in ("elevated", "high") and d.required_regime:
                 lbl = self.g.regime(d.required_regime)["label"]
                 a.append(RecommendedAction(action="Introduce work-rest rotation",
                                            detail=f"Adopt at least: {lbl}, with rest in shade or a cooled area.",
                                            priority="required", source=f"{NIOSH} work/rest regimes"))
+            a.append(water)
             a.append(RecommendedAction(action="Schedule recovery breaks in shade/cool area",
                                        detail="Rest breaks should be taken out of direct sun and away from radiant sources.",
                                        priority="required", source=NIOSH))

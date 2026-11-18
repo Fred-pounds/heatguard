@@ -16,137 +16,116 @@ class InterventionsPage extends StatelessWidget {
     final s = context.watch<AppState>();
     final active = s.interventions.where((i) => i.active).toList();
     final done = s.interventions.where((i) => !i.active).toList();
-    final unresolved = s.activeAlerts.where((a) => a.type == 'heat_risk' && a.interventionIds.isEmpty).toList();
-    return PageBody(children: [
-      ResponsiveGrid(minItemWidth: 220, children: [
-        StatCard(label: 'Active interventions', value: '${active.length}', icon: Icons.healing, color: HG.elevated),
-        StatCard(label: 'Completed', value: '${done.length}', icon: Icons.task_alt, color: HG.routine),
-        StatCard(
-          label: 'Completion rate',
-          value: s.interventions.isEmpty ? '-' : pct(done.length / s.interventions.length),
-          icon: Icons.percent,
-        ),
-        StatCard(
-          label: 'Heat alerts without action',
-          value: '${unresolved.length}',
-          icon: Icons.report_problem_outlined,
-          color: unresolved.isEmpty ? HG.routine : HG.high,
-          footnote: 'Unresolved alerts with no intervention',
+    final noAction = s.activeAlerts.where((a) => a.type == 'heat_risk' && a.interventionIds.isEmpty).length;
+    return DefaultTabController(
+      length: 2,
+      child: PageBody(children: [
+        Row(children: [
+          Expanded(
+            child: Text(
+              noAction == 0 ? 'Every active heat alert has a recorded action.' : '$noAction active heat alert(s) have no recorded action yet.',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: noAction == 0 ? HG.muted : const Color(0xFF991B1B)),
+            ),
+          ),
+          FilledButton.icon(
+            onPressed: s.dataIsLive ? () => showInterventionForm(context) : null,
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text('Record intervention'),
+          ),
+        ]),
+        Card(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            TabBar(isScrollable: true, padding: const EdgeInsets.symmetric(horizontal: 8), tabs: [
+              Tab(text: 'In progress (${active.length})'),
+              Tab(text: 'Completed (${done.length})'),
+            ]),
+            SizedBox(
+              height: 640,
+              child: TabBarView(children: [_List(items: active, empty: 'No interventions in progress'), _List(items: done, empty: 'No completed interventions yet')]),
+            ),
+          ]),
         ),
       ]),
-      SectionCard(
-        title: 'Active interventions',
-        subtitle: 'Follow-up assessments are logged automatically whenever the crew\'s category changes.',
-        trailing: FilledButton.icon(
-          onPressed: s.dataIsLive ? () => showInterventionForm(context) : null,
-          icon: const Icon(Icons.add, size: 18),
-          label: const Text('Record intervention'),
-        ),
-        child: active.isEmpty
-            ? const EmptyState(icon: Icons.healing_outlined, title: 'No active interventions', message: 'Record one from an alert or with the button above.')
-            : Column(children: [for (final i in active) _InterventionCard(i: i)]),
-      ),
-      SectionCard(
-        title: 'Intervention history',
-        child: done.isEmpty
-            ? const EmptyState(icon: Icons.history, title: 'No completed interventions yet')
-            : Column(children: [for (final i in done) _InterventionCard(i: i)]),
-      ),
-    ]);
+    );
   }
 }
 
-class _InterventionCard extends StatelessWidget {
-  const _InterventionCard({required this.i});
+class _List extends StatelessWidget {
+  const _List({required this.items, required this.empty});
+  final List<Intervention> items;
+  final String empty;
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) return EmptyState(icon: Icons.healing_outlined, title: empty, message: 'Record one from an alert or with the button above.');
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      itemCount: items.length,
+      separatorBuilder: (_, _) => const Divider(),
+      itemBuilder: (_, i) => _Row(i: items[i]),
+    );
+  }
+}
+
+class _Row extends StatelessWidget {
+  const _Row({required this.i});
   final Intervention i;
 
   @override
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
     final t = Theme.of(context).textTheme;
-    final changes = i.contextChanges;
     final base = i.baseline;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(border: Border.all(color: HG.border), borderRadius: BorderRadius.circular(8)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Icon(i.active ? Icons.timelapse : Icons.task_alt, color: i.active ? HG.elevated : HG.routine, size: 20),
-          const SizedBox(width: 8),
-          Expanded(child: Text('${i.actionLabel} · ${i.crewName}', style: t.titleSmall)),
-          if (i.active)
-            FilledButton.tonal(
-              onPressed: s.dataIsLive ? () => _complete(context, s) : null,
-              child: const Text('Mark completed'),
-            ),
-        ]),
-        const SizedBox(height: 6),
-        Wrap(spacing: 16, runSpacing: 4, children: [
-          Text('Started ${fmtDateTime(i.start)}', style: t.bodySmall),
-          if (i.end != null) Text('Ended ${fmtDateTime(i.end)}', style: t.bodySmall),
-          if (i.plannedMinutes != null) Text('Planned ${i.plannedMinutes} min', style: t.bodySmall),
-          Text('By ${i.supervisor}', style: t.bodySmall),
-          Text(i.alertId == null ? 'No linked alert' : 'Alert ${i.alertId}', style: t.bodySmall),
-        ]),
-        if (changes.isNotEmpty) ...[
-          const SizedBox(height: 6),
-          Wrap(spacing: 6, children: [
-            for (final e in changes.entries)
-              Pill('${humanize(e.key)}: ${_v(jMap(e.value)['from'])} → ${_v(jMap(e.value)['to'])}', color: HG.primary, icon: Icons.tune),
-          ]),
-        ],
-        if (i.notes.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text('Notes: ${i.notes}', style: const TextStyle(fontSize: 12.5))),
-        const SizedBox(height: 10),
-        Text('Assessment timeline', style: t.labelSmall),
-        const SizedBox(height: 6),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(children: [
-            if (base != null) _step(context, 'Before', base),
-            for (final f in i.followUps) ...[
-              const Padding(padding: EdgeInsets.symmetric(horizontal: 6), child: Icon(Icons.arrow_forward, size: 16, color: HG.muted)),
-              _step(context, fmtTime(f['timestamp']), f),
-            ],
+    final latest = i.followUps.isEmpty ? null : i.followUps.last;
+    final changes = i.contextChanges.entries
+        .map((e) => '${humanize(e.key)}: ${_v(jMap(e.value)['from'])} → ${_v(jMap(e.value)['to'])}')
+        .join(' · ');
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('${i.actionLabel} · ${i.crewName}', style: t.titleSmall?.copyWith(fontSize: 15)),
+            const SizedBox(height: 4),
+            Text('Started ${fmtDateTime(i.start)}${i.end == null ? '' : ' · ended ${fmtDateTime(i.end)}'} · ${i.supervisor}', style: t.bodySmall),
+            if (changes.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Text(changes, style: t.bodySmall)),
+            if (i.notes.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text(i.notes, style: t.bodyMedium)),
+            const SizedBox(height: 10),
+            Row(children: [
+              Text('Before', style: t.labelSmall),
+              const SizedBox(width: 8),
+              SevChip(base?['risk_category'], short: true),
+              const Padding(padding: EdgeInsets.symmetric(horizontal: 10), child: Icon(Icons.arrow_forward, size: 16, color: HG.muted)),
+              Text(i.active ? 'Now' : 'After', style: t.labelSmall),
+              const SizedBox(width: 8),
+              SevChip(latest?['risk_category'] ?? s.assessmentFor(i.crewId)?.category, short: true),
+            ]),
           ]),
         ),
-        if (i.outcome != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Text('Outcome: ${i.outcome}${i.completionNotes.isNotEmpty ? ' - ${i.completionNotes}' : ''}',
-                style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12.5,
-                    color: i.outcome!.startsWith('improved') ? HG.routine : (i.outcome!.startsWith('worsened') ? HG.high : HG.text))),
-          ),
+        if (i.active)
+          OutlinedButton(onPressed: s.dataIsLive ? () => _complete(context, s) : null, child: const Text('Mark completed'))
+        else if (i.outcome != null)
+          Text(humanize(i.outcome!.split(':').first),
+              style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: i.outcome!.startsWith('improved') ? const Color(0xFF166534) : (i.outcome!.startsWith('worsened') ? HG.high : HG.muted))),
       ]),
     );
   }
 
   String _v(dynamic v) => v == null ? '-' : (regimeLabels[v] ?? humanize('$v'));
 
-  Widget _step(BuildContext context, String label, J f) => Tooltip(
-        message: '${f['note']}${f['effective_wbgt'] == null ? '' : ' · eff. WBGT ${fmtNum(f['effective_wbgt'])} °C'}',
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, style: const TextStyle(fontSize: 10.5, color: HG.muted)),
-          const SizedBox(height: 3),
-          SevChip(f['risk_category']),
-        ]),
-      );
-
   Future<void> _complete(BuildContext context, AppState s) async {
     final notes = TextEditingController();
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Complete: ${i.actionLabel}'),
+        title: Text('Complete ${i.actionLabel.toLowerCase()}?'),
         content: SizedBox(
           width: 420,
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            const Text('A follow-up assessment will be recorded now. Completing an intervention does not resolve the alert '
-                'and does not clear any worker to resume work.'),
-            const SizedBox(height: 12),
-            TextField(controller: notes, maxLines: 2, decoration: const InputDecoration(labelText: 'Completion notes')),
+            const Text('A follow-up assessment is recorded now. This does not resolve the alert or clear anyone to resume work.'),
+            const SizedBox(height: 16),
+            TextField(controller: notes, maxLines: 2, decoration: const InputDecoration(labelText: 'Notes (optional)')),
           ]),
         ),
         actions: [
@@ -157,6 +136,6 @@ class _InterventionCard extends StatelessWidget {
     );
     if (ok != true) return;
     final err = await s.run((api) => api.post('/interventions/${i.id}/complete', {'notes': notes.text.trim(), 'supervisor_id': 'supervisor-demo'}));
-    if (context.mounted) showResult(context, err, 'Intervention completed - follow-up assessment recorded');
+    if (context.mounted) showResult(context, err, 'Intervention completed');
   }
 }

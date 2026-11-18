@@ -24,6 +24,7 @@ class _ReportsPageState extends State<ReportsPage> {
   bool loading = false;
   bool evaluating = false;
   DateTime? fetchedAt;
+  int tab = 0;
 
   Future<void> _load() async {
     if (loading) return;
@@ -71,38 +72,57 @@ class _ReportsPageState extends State<ReportsPage> {
       WidgetsBinding.instance.addPostFrameCallback((_) => _load());
     }
     final s = summary;
+    final t = Theme.of(context).textTheme;
     return PageBody(children: [
-      Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: HG.simulated.withValues(alpha: 0.07),
-          border: Border.all(color: HG.simulated.withValues(alpha: 0.4)),
-          borderRadius: BorderRadius.circular(8),
+      Row(children: [
+        SegmentedButton<int>(
+          showSelectedIcon: false,
+          segments: const [
+            ButtonSegment(value: 0, label: Text('Operations')),
+            ButtonSegment(value: 1, label: Text('Evaluation')),
+            ButtonSegment(value: 2, label: Text('Export')),
+          ],
+          selected: {tab},
+          onSelectionChanged: (v) => setState(() => tab = v.first),
         ),
-        child: Row(children: [
-          const Icon(Icons.science_outlined, color: HG.simulated),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              '${s?['disclaimer'] ?? 'All figures derive from SIMULATED data.'} Real-world performance requires field validation with calibrated instruments.',
-              style: const TextStyle(fontSize: 12.5, color: HG.text),
-            ),
-          ),
-        ]),
-      ),
-      SectionCard(
-        title: 'Export',
-        subtitle: 'CSV files are labelled SIMULATED in their header and data_origin column.',
-        trailing: IconButton(tooltip: 'Refresh', onPressed: _load, icon: loading ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.refresh)),
-        child: Wrap(spacing: 8, runSpacing: 8, children: [
-          for (final k in const ['summary', 'readings', 'assessments', 'alerts', 'interventions', 'evaluation'])
-            OutlinedButton.icon(onPressed: () => _export(k), icon: const Icon(Icons.download, size: 18), label: Text(humanize(k))),
-        ]),
-      ),
-      if (error != null && s == null) SectionCard(child: EmptyState(icon: Icons.cloud_off, title: 'Report unavailable', message: error)),
-      if (s == null && error == null) const SizedBox(height: 200, child: LoadingState(message: 'Loading report...')),
-      if (s != null) ..._metrics(s),
-      _evaluationSection(),
+        const Spacer(),
+        IconButton(
+          tooltip: 'Refresh',
+          onPressed: _load,
+          icon: loading ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.refresh),
+        ),
+      ]),
+      Text('All figures come from simulated data and demo operations. They are not field measurements and do not show real-world prevention outcomes.',
+          style: t.bodySmall),
+      if (tab == 0) ...[
+        if (error != null && s == null) SectionCard(child: EmptyState(icon: Icons.cloud_off, title: 'Report unavailable', message: error)),
+        if (s == null && error == null) const SizedBox(height: 200, child: LoadingState(message: 'Loading report...')),
+        if (s != null) ..._metrics(s),
+      ],
+      if (tab == 1) _evaluationSection(),
+      if (tab == 2)
+        SectionCard(
+          title: 'Download CSV',
+          subtitle: 'Every file is labelled as simulated data in its header and data_origin column.',
+          child: Column(children: [
+            for (final k in const {
+              'summary': 'Key metrics',
+              'readings': 'Sensor readings',
+              'assessments': 'Assessments',
+              'alerts': 'Alerts',
+              'interventions': 'Interventions',
+              'evaluation': 'Evaluation results',
+            }.entries) ...[
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(k.value, style: t.titleSmall),
+                subtitle: Text('heatguard_${k.key}.csv', style: t.bodySmall),
+                trailing: OutlinedButton.icon(onPressed: () => _export(k.key), icon: const Icon(Icons.download, size: 18), label: const Text('Download')),
+              ),
+              if (k.key != 'evaluation') const Divider(),
+            ],
+          ]),
+        ),
     ]);
   }
 
@@ -115,16 +135,16 @@ class _ReportsPageState extends State<ReportsPage> {
     final ack = jMap(al['acknowledgement_time_seconds']);
     final rec = jMap(con['recovery_time_seconds']);
     return [
-      ResponsiveGrid(minItemWidth: 220, children: [
-        StatCard(label: 'Alerts raised', value: '${al['total'] ?? 0}', icon: Icons.notifications, footnote: '${al['duplicates_suppressed']} duplicate repeats suppressed'),
-        StatCard(label: 'Median ack. time', value: fmtDuration(ack['median'] as num?), icon: Icons.timer_outlined, color: HG.elevated,
+      ResponsiveGrid(minItemWidth: 300, children: [
+        StatCard(label: 'Alerts raised', value: '${al['total'] ?? 0}', footnote: '${al['duplicates_suppressed']} duplicate repeats suppressed'),
+        StatCard(label: 'Median ack. time', value: fmtDuration(ack['median'] as num?), 
             footnote: '${ack['count']} acknowledged · max ${fmtDuration(ack['max'] as num?)}'),
-        StatCard(label: 'Unresolved alerts', value: '${al['unresolved'] ?? 0}', icon: Icons.pending_actions, color: HG.high,
+        StatCard(label: 'Unresolved alerts', value: '${al['unresolved'] ?? 0}', color: ((al['unresolved'] as num?) ?? 0) > 0 ? HG.high : null,
             footnote: '${al['unacknowledged']} unacknowledged · ${al['escalated']} escalated'),
-        StatCard(label: 'Intervention completion', value: pct(iv['completion_rate']), icon: Icons.task_alt, color: HG.routine,
+        StatCard(label: 'Intervention completion', value: pct(iv['completion_rate']), 
             footnote: '${iv['completed']}/${iv['total']} · coverage of heat alerts ${pct(iv['heat_alert_intervention_coverage'])}'),
-        StatCard(label: 'Assessment completeness', value: pct(asm['completeness']), icon: Icons.fact_check, footnote: '${asm['stored']} stored assessments'),
-        StatCard(label: 'Connectivity recovery', value: fmtDuration(rec['median'] as num?), icon: Icons.wifi_tethering, color: HG.simulated,
+        StatCard(label: 'Assessment completeness', value: pct(asm['completeness']), footnote: '${asm['stored']} stored assessments'),
+        StatCard(label: 'Connectivity recovery', value: fmtDuration(rec['median'] as num?), 
             footnote: '${con['data_flow_recoveries']} recoveries · ${con['pending_database_writes']} writes pending'),
       ]),
       SectionCard(
@@ -223,19 +243,19 @@ class _ReportsPageState extends State<ReportsPage> {
           ? const EmptyState(icon: Icons.science_outlined, title: 'No evaluation run yet', message: 'Run the 8 predefined synthetic cases (about 1 second).')
           : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               ResponsiveGrid(minItemWidth: 190, children: [
-                StatCard(label: 'Cases passed', value: '${sum!['cases_passed']}/${sum['cases']}', icon: Icons.verified,
+                StatCard(label: 'Cases passed', value: '${sum!['cases_passed']}/${sum['cases']}', 
                     color: sum['cases_passed'] == sum['cases'] ? HG.routine : HG.high),
-                StatCard(label: 'Checks passed', value: '${sum['checks_passed']}/${sum['checks']}', icon: Icons.checklist),
-                StatCard(label: 'Mean alert lead time', value: '${sum['mean_alert_lead_time_min'] ?? '-'} min', icon: Icons.timer, footnote: 'simulated minutes'),
-                StatCard(label: 'False-alarm rate', value: pct(sum['mean_false_alarm_rate']), icon: Icons.notifications_off_outlined, color: HG.elevated),
-                StatCard(label: 'Missed-alert rate', value: pct(sum['mean_missed_alert_rate']), icon: Icons.report_off_outlined, color: HG.high),
-                StatCard(label: '"False safe" minutes', value: '${sum['total_false_safe_minutes']}', icon: Icons.gpp_maybe_outlined,
+                StatCard(label: 'Checks passed', value: '${sum['checks_passed']}/${sum['checks']}'),
+                StatCard(label: 'Mean alert lead time', value: '${sum['mean_alert_lead_time_min'] ?? '-'} min', footnote: 'before the limit was exceeded'),
+                StatCard(label: 'False-alarm rate', value: pct(sum['mean_false_alarm_rate']), color: ((sum['mean_false_alarm_rate'] as num?) ?? 0) > 0 ? HG.elevated : null),
+                StatCard(label: 'Missed-alert rate', value: pct(sum['mean_missed_alert_rate']), color: ((sum['mean_missed_alert_rate'] as num?) ?? 0) > 0 ? HG.high : null),
+                StatCard(label: '"False safe" minutes', value: '${sum['total_false_safe_minutes']}', 
                     color: sum['total_false_safe_minutes'] == 0 ? HG.routine : HG.critical, footnote: 'Routine shown while data missing'),
               ]),
               const SizedBox(height: 10),
-              Text('${ev['method']}', style: const TextStyle(fontSize: 12, color: HG.muted)),
+              Text('${ev['method']}', style: const TextStyle(fontSize: 13, color: HG.muted)),
               const SizedBox(height: 4),
-              Text('${ev['disclaimer']}', style: const TextStyle(fontSize: 12, color: HG.high, fontWeight: FontWeight.w600)),
+              Text('${ev['disclaimer']}', style: const TextStyle(fontSize: 13, color: HG.muted)),
               Text('Generated ${fmtDateTime(ev['generated_at'])}', style: const TextStyle(fontSize: 11, color: HG.muted)),
               const SizedBox(height: 12),
               for (final c in jList(ev['cases'])) _case(c),

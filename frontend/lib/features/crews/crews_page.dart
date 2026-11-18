@@ -16,107 +16,136 @@ class CrewsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
+    final t = Theme.of(context).textTheme;
     return PageBody(children: [
-      SectionCard(
-        title: 'Crews',
-        subtitle: 'Crew-level operational context only - no worker names or individual health data are collected.',
-        trailing: FilledButton.icon(
+      Row(children: [
+        Expanded(
+          child: Text('Crew-level work context only. No worker names or health data are collected.',
+              style: t.bodyLarge?.copyWith(color: HG.muted)),
+        ),
+        FilledButton.icon(
           onPressed: s.dataIsLive ? () => showCrewForm(context, null) : null,
           icon: const Icon(Icons.add, size: 18),
           label: const Text('Add crew'),
         ),
+      ]),
+      Card(
         child: s.crews.isEmpty
-            ? const EmptyState(icon: Icons.groups_outlined, title: 'No crews registered', message: 'Add a crew to start assessments.')
-            : SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: DataTable(
-                  columnSpacing: 18,
-                  headingTextStyle: Theme.of(context).textTheme.labelSmall,
-                  dataRowMinHeight: 52,
-                  dataRowMaxHeight: 60,
-                  columns: const [
-                    DataColumn(label: Text('CREW')),
-                    DataColumn(label: Text('WORKSITE / ZONE')),
-                    DataColumn(label: Text('WORKERS'), numeric: true),
-                    DataColumn(label: Text('WORKLOAD')),
-                    DataColumn(label: Text('ACCLIMATIZATION')),
-                    DataColumn(label: Text('CLOTHING')),
-                    DataColumn(label: Text('WORK/REST')),
-                    DataColumn(label: Text('SHIFT')),
-                    DataColumn(label: Text('STATUS')),
-                    DataColumn(label: Text('')),
+            ? const EmptyState(icon: Icons.groups_outlined, title: 'No crews yet', message: 'Add a crew to start assessments.')
+            : LayoutBuilder(builder: (context, box) {
+                final wide = box.maxWidth > 900;
+                return Column(children: [
+                  if (wide)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
+                      child: Row(children: [
+                        Expanded(flex: 3, child: Text('Crew', style: t.labelMedium)),
+                        Expanded(flex: 2, child: Text('Workload', style: t.labelMedium)),
+                        Expanded(flex: 2, child: Text('Acclimatization', style: t.labelMedium)),
+                        Expanded(flex: 2, child: Text('Clothing', style: t.labelMedium)),
+                        Expanded(flex: 2, child: Text('Work / rest', style: t.labelMedium)),
+                        SizedBox(width: 150, child: Text('Status', style: t.labelMedium)),
+                        const SizedBox(width: 48),
+                      ]),
+                    ),
+                  for (var i = 0; i < s.crews.length; i++) ...[
+                    if (i > 0 || wide) const Divider(),
+                    _CrewRow(crew: s.crews[i], wide: wide),
                   ],
-                  rows: [for (final c in s.crews) _row(context, s, c)],
-                ),
-              ),
+                ]);
+              }),
       ),
-      _WorkloadReference(meta: s.meta),
-    ]);
-  }
-
-  DataRow _row(BuildContext context, AppState s, Crew c) {
-    final ws = s.worksiteById(c.worksiteId);
-    Future<void> quick(String field, String value, String label) async {
-      final err = await s.run((api) => api.put('/crews/${c.id}', {field: value}));
-      if (context.mounted) showResult(context, err, '${c.name}: $label updated - reassessed');
-    }
-
-    Widget inline(String field, String value, List<String> ids) => DropdownButtonHideUnderline(
-          child: DropdownButton<String>(
-            key: ValueKey('${c.id}-$field-$value'),
-            value: value,
-            isDense: true,
-            style: TextStyle(
-                fontSize: 12.5,
-                color: value == 'unknown' || value == 'not_acclimatized' ? HG.elevated : HG.text,
-                fontWeight: FontWeight.w600),
-            items: [for (final id in ids) DropdownMenuItem(value: id, child: Text(humanize(id)))],
-            onChanged: s.dataIsLive ? (v) => v == null || v == value ? null : quick(field, v, humanize(field)) : null,
-          ),
-        );
-
-    return DataRow(cells: [
-      DataCell(Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(c.name, style: const TextStyle(fontWeight: FontWeight.w700)),
-        Text(c.task.isEmpty ? '-' : c.task, style: const TextStyle(fontSize: 11, color: HG.muted), overflow: TextOverflow.ellipsis),
-      ])),
-      DataCell(Text('${ws?.name.split(' ').take(2).join(' ') ?? c.worksiteId}\n${c.zone}', style: const TextStyle(fontSize: 12))),
-      DataCell(Text('${c.workerCount}')),
-      DataCell(inline('workload', c.workload, workloadIds)),
-      DataCell(inline('acclimatization', c.acclimatization, acclIds)),
-      DataCell(Text(_clothingLabel(s, c.clothing), style: const TextStyle(fontSize: 12))),
-      DataCell(Text(regimeLabels[c.regime] ?? c.regime, style: const TextStyle(fontSize: 12))),
-      DataCell(Text('${c.shiftStart} · ${c.shiftHours.toStringAsFixed(c.shiftHours % 1 == 0 ? 0 : 1)} h', style: const TextStyle(fontSize: 12))),
-      DataCell(SevChip(s.assessmentFor(c.id)?.category)),
-      DataCell(Row(mainAxisSize: MainAxisSize.min, children: [
-        IconButton(tooltip: 'Edit crew', icon: const Icon(Icons.edit_outlined, size: 19), onPressed: s.dataIsLive ? () => showCrewForm(context, c) : null),
-        IconButton(
-          tooltip: 'Remove crew',
-          icon: const Icon(Icons.delete_outline, size: 19, color: HG.high),
-          onPressed: !s.dataIsLive
-              ? null
-              : () async {
-                  final ok = await confirmDialog(context,
-                      title: 'Remove ${c.name}?',
-                      message: 'The crew will no longer be assessed. Alert and intervention history is preserved. '
-                          'Crews with unresolved alerts cannot be removed.',
-                      confirm: 'Remove',
-                      destructive: true);
-                  if (!ok) return;
-                  final err = await s.run((api) => api.delete('/crews/${c.id}'));
-                  if (context.mounted) showResult(context, err, '${c.name} removed');
-                },
+      Card(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+          child: Details(title: 'Reference: workload and clothing categories', icon: Icons.menu_book_outlined, children: [_WorkloadReference(meta: s.meta)]),
         ),
-      ])),
+      ),
     ]);
   }
 }
 
-String _clothingLabel(AppState s, String id) {
+class _CrewRow extends StatelessWidget {
+  const _CrewRow({required this.crew, required this.wide});
+  final Crew crew;
+  final bool wide;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.watch<AppState>();
+    final t = Theme.of(context).textTheme;
+    final c = crew;
+    final ws = s.worksiteById(c.worksiteId);
+    Text warn(String v, String label) =>
+        Text(label, style: TextStyle(fontSize: 14, color: v == 'unknown' || v == 'not_acclimatized' ? const Color(0xFF9A3412) : HG.text));
+    final menu = PopupMenuButton<String>(
+      tooltip: 'Actions',
+      icon: const Icon(Icons.more_horiz, color: HG.muted),
+      enabled: s.dataIsLive,
+      onSelected: (v) async {
+        if (v == 'edit') showCrewForm(context, c);
+        if (v == 'delete') {
+          final ok = await confirmDialog(context,
+              title: 'Remove ${c.name}?',
+              message: 'The crew will no longer be assessed. Its alert and intervention history is kept. Crews with unresolved alerts cannot be removed.',
+              confirm: 'Remove',
+              destructive: true);
+          if (!ok) return;
+          final err = await s.run((api) => api.delete('/crews/${c.id}'));
+          if (context.mounted) showResult(context, err, '${c.name} removed');
+        }
+      },
+      itemBuilder: (_) => const [
+        PopupMenuItem(value: 'edit', child: Text('Edit crew')),
+        PopupMenuItem(value: 'delete', child: Text('Remove crew', style: TextStyle(color: HG.high))),
+      ],
+    );
+    final name = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(c.name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+      const SizedBox(height: 2),
+      Text('${ws?.name.split(' ').take(2).join(' ') ?? ''} · ${c.zone} · ${c.workerCount} workers', style: t.bodySmall),
+    ]);
+    if (!wide) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 8, 12),
+        child: Row(children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              name,
+              const SizedBox(height: 6),
+              Text('${humanize(c.workload)} work · ${humanize(c.acclimatization)} · ${regimeLabels[c.regime]}', style: t.bodySmall),
+            ]),
+          ),
+          SevChip(s.assessmentFor(c.id)?.category, short: true),
+          menu,
+        ]),
+      );
+    }
+    return InkWell(
+      onTap: s.dataIsLive ? () => showCrewForm(context, c) : null,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 14, 8, 14),
+        child: Row(children: [
+          Expanded(flex: 3, child: name),
+          Expanded(flex: 2, child: warn(c.workload, humanize(c.workload))),
+          Expanded(flex: 2, child: warn(c.acclimatization, humanize(c.acclimatization))),
+          Expanded(flex: 2, child: Text(_clothingShort(s, c.clothing), style: const TextStyle(fontSize: 14))),
+          Expanded(flex: 2, child: Text(regimeLabels[c.regime] ?? c.regime, style: const TextStyle(fontSize: 14))),
+          SizedBox(width: 150, child: Align(alignment: Alignment.centerLeft, child: SevChip(s.assessmentFor(c.id)?.category, short: true))),
+          SizedBox(width: 48, child: menu),
+        ]),
+      ),
+    );
+  }
+}
+
+String _clothingShort(AppState s, String id) {
+  if (id == 'unknown') return 'Unknown';
   final m = jMap(jMap(s.meta['clothing'])[id]);
   if (m.isEmpty) return humanize(id);
+  final label = '${m['label']}'.replaceAll(RegExp(r'\s*\(.*\)'), '');
   final caf = m['caf'];
-  return '${m['label']}${caf == null ? ' (needs config)' : (caf as num) > 0 ? ' (+$caf)' : ''}';
+  return caf == null ? '$label (needs setup)' : ((caf as num) > 0 ? '$label (+$caf °C)' : label);
 }
 
 Future<void> showCrewForm(BuildContext context, Crew? crew) =>
@@ -318,26 +347,16 @@ class _WorkloadReference extends StatelessWidget {
   Widget build(BuildContext context) {
     final wl = jMap(meta['workloads']);
     final cl = jMap(meta['clothing']);
-    return SectionCard(
-      title: 'Reference: workload and clothing categories',
-      subtitle: 'From the configured guideline. Values are documented category estimates, not measurements.',
-      child: Wrap(spacing: 32, runSpacing: 16, children: [
-        SizedBox(
-          width: 460,
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Workload (metabolic rate)', style: TextStyle(fontWeight: FontWeight.w700)),
-            for (final e in wl.entries)
-              KV('${jMap(e.value)['label']} · ${jMap(e.value)['watts']} W', '${jMap(e.value)['examples']}', width: 150),
-          ]),
-        ),
-        SizedBox(
-          width: 460,
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Clothing adjustment factor (°C-WBGT)', style: TextStyle(fontWeight: FontWeight.w700)),
-            for (final e in cl.entries)
-              KV('${jMap(e.value)['caf'] ?? 'requires config'}', '${jMap(e.value)['label']}', width: 110),
-          ]),
-        ),
+    return TwoColumn(
+      left: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('Workload (metabolic rate)', style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 6),
+        for (final e in wl.entries) KV('${jMap(e.value)['label']} · ${jMap(e.value)['watts']} W', '${jMap(e.value)['examples']}', width: 140),
+      ]),
+      right: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('Clothing adjustment (added to WBGT)', style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 6),
+        for (final e in cl.entries) KV(jMap(e.value)['caf'] == null ? 'Needs setup' : '+${jMap(e.value)['caf']} °C', '${jMap(e.value)['label']}', width: 110),
       ]),
     );
   }

@@ -1,64 +1,103 @@
 import 'package:material_ui/material_ui.dart';
 
+/// Design tokens. Calm, high-contrast, low-noise: colour is reserved for risk status.
 class HG {
-  // Brand / surfaces
-  static const navy = Color(0xFF0F1B2D);
-  static const navy2 = Color(0xFF16263D);
-  static const navyLine = Color(0xFF243650);
-  static const bg = Color(0xFFF4F6F9);
+  // Surfaces & text
+  static const navy = Color(0xFF0F172A);
+  static const navy2 = Color(0xFF1E293B);
+  static const navyLine = Color(0xFF243044);
+  static const bg = Color(0xFFF6F7F9);
   static const surface = Colors.white;
-  static const border = Color(0xFFE3E7ED);
-  static const text = Color(0xFF16202E);
-  static const muted = Color(0xFF5B6778);
-  static const primary = Color(0xFF1F5FBF);
-  static const accent = Color(0xFFE8590C);
+  static const subtle = Color(0xFFF3F4F6);
+  static const border = Color(0xFFE5E7EB);
+  static const text = Color(0xFF111827);
+  static const muted = Color(0xFF6B7280);
+  static const primary = Color(0xFF2563EB);
+  static const accent = Color(0xFFEA580C);
 
   // Severity scale (used consistently everywhere)
-  static const routine = Color(0xFF2E9E5B);
-  static const caution = Color(0xFFE0B000);
-  static const elevated = Color(0xFFF07C1C);
-  static const high = Color(0xFFD93025);
-  static const critical = Color(0xFF8B0F0F);
-  static const unavailable = Color(0xFF6B4FA8); // data unavailable: deliberately NOT green or grey
-  static const simulated = Color(0xFF7A5AF8);
+  static const routine = Color(0xFF16A34A);
+  static const caution = Color(0xFFEAB308);
+  static const elevated = Color(0xFFF97316);
+  static const high = Color(0xFFDC2626);
+  static const critical = Color(0xFF7F1D1D);
+  static const unavailable = Color(0xFF7C3AED); // data unavailable: never green or grey
+  static const simulated = Color(0xFF7C3AED);
+
+  // Spacing scale
+  static const s1 = 4.0, s2 = 8.0, s3 = 12.0, s4 = 16.0, s5 = 24.0, s6 = 32.0;
 
   static ThemeData theme() {
     final scheme = ColorScheme.fromSeed(seedColor: primary, surface: surface).copyWith(primary: primary);
+    const border8 = BorderRadius.all(Radius.circular(8));
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
       scaffoldBackgroundColor: bg,
       fontFamily: 'Roboto',
       textTheme: const TextTheme(
-        headlineSmall: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: text, letterSpacing: -0.2),
-        titleLarge: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: text),
-        titleMedium: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: text),
-        titleSmall: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: text),
-        bodyMedium: TextStyle(fontSize: 13.5, color: text, height: 1.4),
-        bodySmall: TextStyle(fontSize: 12, color: muted, height: 1.35),
-        labelSmall: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: muted, letterSpacing: 0.4),
+        headlineMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: text, height: 1.2),
+        headlineSmall: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: text, height: 1.25),
+        titleLarge: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: text, height: 1.3),
+        titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: text, height: 1.35),
+        titleSmall: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: text, height: 1.4),
+        bodyLarge: TextStyle(fontSize: 15, color: text, height: 1.55),
+        bodyMedium: TextStyle(fontSize: 14, color: text, height: 1.5),
+        bodySmall: TextStyle(fontSize: 13, color: muted, height: 1.45),
+        labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        labelMedium: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: muted),
+        labelSmall: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: muted, letterSpacing: 0.1),
       ),
-      cardTheme: CardThemeData(
+      cardTheme: const CardThemeData(
         color: surface,
         elevation: 0,
         margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: const BorderSide(color: border)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(12)), side: BorderSide(color: border)),
       ),
       dividerTheme: const DividerThemeData(color: border, space: 1, thickness: 1),
-      inputDecorationTheme: InputDecorationTheme(
+      inputDecorationTheme: const InputDecorationTheme(
         isDense: true,
         filled: true,
         fillColor: Colors.white,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: border)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: border)),
+        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        border: OutlineInputBorder(borderRadius: border8, borderSide: BorderSide(color: border)),
+        enabledBorder: OutlineInputBorder(borderRadius: border8, borderSide: BorderSide(color: border)),
       ),
       filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+        style: FilledButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          shape: const RoundedRectangleBorder(borderRadius: border8),
+        ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: text,
+          side: const BorderSide(color: border),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          shape: const RoundedRectangleBorder(borderRadius: border8),
+        ),
       ),
-      snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
+      textButtonTheme: TextButtonThemeData(style: TextButton.styleFrom(shape: const RoundedRectangleBorder(borderRadius: border8))),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: SegmentedButton.styleFrom(
+          foregroundColor: muted,
+          selectedBackgroundColor: const Color(0xFFE0E9FF),
+          selectedForegroundColor: primary,
+          side: const BorderSide(color: border),
+        ),
+      ),
+      tabBarTheme: const TabBarThemeData(
+        labelColor: text,
+        unselectedLabelColor: muted,
+        indicatorColor: primary,
+        dividerColor: border,
+        labelStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        unselectedLabelStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+        tabAlignment: TabAlignment.start,
+      ),
+      expansionTileTheme: const ExpansionTileThemeData(shape: Border(), collapsedShape: Border()),
+      snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating, width: 440),
+      tooltipTheme: const TooltipThemeData(waitDuration: Duration(milliseconds: 400)),
     );
   }
 }
