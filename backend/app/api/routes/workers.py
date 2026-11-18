@@ -1,17 +1,19 @@
 """Consented worker signals, symptom check-ins and clinical escalation.
 
 Access model:
-  worker      - own consent, own signal status, symptom reports
+  worker      - own consent and own signal status, only from a phone paired with the badge (pairing code +
+                device token in the X-HeatGuard-Device header); crew-level symptom reports
   supervisor  - crew-level counts, badges to check on, redacted escalations (no values, no symptoms)
   ohs / admin - individual signal values and symptom details
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 
 from ...core.security import current_role, require_ohs, require_supervisor
-from ...schemas.worker import AGE_BANDS, OUTCOMES, SYMPTOMS_FIRST_AID, SYMPTOMS_RED_FLAG, ConsentRequest, EscalationUpdate, SignalIn, SymptomReportIn
+from ...schemas.worker import AGE_BANDS, OUTCOMES, SYMPTOMS_FIRST_AID, SYMPTOMS_RED_FLAG, ConsentRequest, EscalationUpdate, PairRequest, SignalIn, SymptomReportIn
 from ...services.heatguard_service import HeatGuardService
+from ...services.worker_service import PairingError
 from ..deps import get_service
 
 router = APIRouter(tags=["workers & escalation"])
@@ -32,31 +34,56 @@ async def list_workers(svc: HeatGuardService = Depends(get_service)):
     out = []
     for w in sorted(svc.repo.workers.values(), key=lambda x: x["badge"]):
         crew = svc.repo.crews.get(w["crew_id"], {})
-        out.append({**w, "crew_name": crew.get("name", ""), "signal": svc.workers.status(w, crew.get("acclimatization", "unknown"))})
+        out.append({**svc.workers.public(w), "crew_name": crew.get("name", ""), "signal": svc.workers.status(w, crew.get("acclimatization", "unknown"))})
     return out
 
 
 @router.get("/worker/badges/{crew_id}")
-async def badges(crew_id: str, svc: HeatGuardService = Depends(get_service)):
-    return [{"worker_id": w["worker_id"], "badge": w["badge"], "sharing": w["consent"]["status"] == "granted"}
+async def badges(crew_id: str, role: str = Depends(current_role), svc: HeatGuardService = Depends(get_service)):
+    """Badge labels for a crew. Whether a badge is sharing is not shown to the worker app (it reveals consent)."""
+    staff = role in ("supervisor", "ohs", "admin")
+    return [{"worker_id": w["worker_id"], "badge": w["badge"]} | ({"sharing": w["consent"]["status"] == "granted"} if staff else {})
             for w in svc.workers.workers_for_crew(crew_id)]
 
 
-@router.get("/worker/me/{worker_id}")
-async def me(worker_id: str, svc: HeatGuardService = Depends(get_service)):
-    """A worker's own consent and signal status (their own data)."""
-    w = svc.repo.workers.get(worker_id)
-    if not w:
+def _paired(worker_id: str, token: str | None, svc: HeatGuardService) -> dict:
+    try:
+        return svc.workers.check_device(worker_id, token)
+    except PairingError as exc:
+        raise HTTPException(exc.status, str(exc)) from exc
+
+
+@router.post("/worker/pair")
+async def pair(body: PairRequest, svc: HeatGuardService = Depends(get_service)):
+    """Pair this phone with a badge using the code on the badge (or from the first aider)."""
+    try:
+        token = svc.workers.pair(body.worker_id, body.code)
+    except PairingError as exc:
+        raise HTTPException(exc.status, str(exc)) from exc
+    return {"device_token": token, "badge": svc.repo.workers[body.worker_id]["badge"]}
+
+
+@router.post("/workers/{worker_id}/pairing-code", dependencies=[Depends(require_ohs)])
+async def new_pairing_code(worker_id: str, svc: HeatGuardService = Depends(get_service)):
+    """OHS: issue a new pairing code (lost or replaced phone). The old phone is unpaired."""
+    if worker_id not in svc.repo.workers:
         raise HTTPException(404, "Unknown badge")
+    return svc.workers.public(svc.workers.reissue_code(worker_id))
+
+
+@router.get("/worker/me/{worker_id}")
+async def me(worker_id: str, x_heatguard_device: str | None = Header(default=None), svc: HeatGuardService = Depends(get_service)):
+    """A worker's own consent and signal status. Only for the phone paired with this badge."""
+    w = _paired(worker_id, x_heatguard_device, svc)
     crew = svc.repo.crews.get(w["crew_id"], {})
     return {"badge": w["badge"], "consent": w["consent"], "age_band": w.get("age_band"),
             "signal": svc.workers.status(w, crew.get("acclimatization", "unknown"))}
 
 
 @router.post("/worker/me/{worker_id}/consent")
-async def consent(worker_id: str, body: ConsentRequest, svc: HeatGuardService = Depends(get_service)):
-    if worker_id not in svc.repo.workers:
-        raise HTTPException(404, "Unknown badge")
+async def consent(worker_id: str, body: ConsentRequest, x_heatguard_device: str | None = Header(default=None),
+                  svc: HeatGuardService = Depends(get_service)):
+    _paired(worker_id, x_heatguard_device, svc)
     try:
         w = svc.workers.set_consent(worker_id, body)
     except ValueError as exc:
@@ -73,7 +100,11 @@ async def ingest_signal(body: SignalIn | list[SignalIn], svc: HeatGuardService =
 
 
 @router.post("/symptoms", status_code=201)
-async def report_symptoms(body: SymptomReportIn, role: str = Depends(current_role), svc: HeatGuardService = Depends(get_service)):
+async def report_symptoms(body: SymptomReportIn, role: str = Depends(current_role), x_heatguard_device: str | None = Header(default=None),
+                          svc: HeatGuardService = Depends(get_service)):
+    # A report naming a badge must come from that badge's paired phone (or from staff); otherwise it is crew-level.
+    if body.worker_id and role == "worker":
+        _paired(body.worker_id, x_heatguard_device, svc)
     try:
         esc = svc.workers.report_symptoms(body)
     except KeyError as exc:

@@ -29,15 +29,12 @@ class WorkerApp extends StatelessWidget {
           title: 'HeatGuard',
           debugShowCheckedModeBanner: false,
           theme: T.theme(),
-          builder: (context, child) => Directionality(
-            textDirection: state.l.isRtl ? TextDirection.rtl : TextDirection.ltr,
-            child: child!,
-          ),
+          builder: (context, child) => Directionality(textDirection: state.l.isRtl ? TextDirection.rtl : TextDirection.ltr, child: child!),
           home: !state.ready
               ? const Scaffold(body: Center(child: AppLogo(size: 64)))
               : state.onboarded
-                  ? const HomeScreen()
-                  : const OnboardingScreen(),
+              ? const HomeScreen()
+              : const OnboardingScreen(),
         ),
       ),
     );

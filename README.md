@@ -14,10 +14,10 @@
 | Desired outcome | What HeatGuard does |
 |---|---|
 | **Dynamic heat-risk assessment** | Environment (WBGT) + workload + clothing + acclimatization + work/rest schedule, per crew, against NIOSH limits. **Optional consented wearable signals** (heart rate, estimated core temperature) flag individual strain using NIOSH physiological criteria. A **trend outlook** projects when the limit will be reached and raises an early caution. |
-| **Clear, graded, multilingual warnings** | Five plain levels plus "unavailable". Actions: hydration, rest, cooling, work-intensity reduction, work/rest rotation, shift change, and **clinical escalation** (first aid or 998). The worker app is available in **English, Arabic, Urdu and Hindi**, with phone (browser) notifications. |
-| **Worker-first governance** | **Informed consent** with one-tap withdrawal that deletes data; pseudonymous badges; age band only; raw signals kept for 2 h; supervisors see crew counts only; an **OHS-only role** for individual values and symptoms; documented non-punitive use; UAE PDPL. |
+| **Clear, graded, multilingual warnings** | Five plain levels plus "unavailable". Actions: hydration, rest, cooling, work-intensity reduction, work/rest rotation, shift change, and **clinical escalation** (first aid or 998). The worker app is available in **six languages** (English, Arabic, Urdu, Hindi, Malayalam, Bengali), can **read the notice aloud**, and alerts the phone (browser notifications). |
+| **Worker-first governance** | **Informed consent** with one-tap withdrawal that deletes data; pseudonymous badges whose data only the **phone paired with the badge code** can see; age band only; raw signals kept for 2 h; supervisors see crew counts only; an **OHS-only role** for individual values and symptoms; documented non-punitive use; UAE PDPL. |
 | **Field-ready operation** | Abu Dhabi heat and humidity scenarios, **shamal dust** (fouled globe and wick detected), **station and wearable battery**, network outages with edge buffering, PPE clothing adjustments. Every failure falls back to "unavailable", never "safe". |
-| **Supervisor decision support** | Crew and site views, the required work/rest schedule, outlook ("limit in ~25 min"), midday-break countdown, interventions with immediate reassessment, and no unnecessary clinical detail. |
+| **Supervisor decision support** | Crew and site views, a **shift plan** (when heavy work fits, when rotation must start, when strenuous work must stop, midday break), the required work/rest schedule, outlook ("limit in ~25 min"), midday-break countdown, interventions with immediate reassessment, and no unnecessary clinical detail. |
 | **Safety and productivity measures** | Alert lead time, false-alarm and missed-alert rates (evaluation), **adherence to recommended controls**, **midday-break compliance**, **symptoms and incidents**, **emergency escalations**, **lost work time**, and acknowledgement times. |
 
 ## The problem
@@ -50,18 +50,19 @@ mornings and summer afternoons on site.
 | ![Demo guide](docs/screenshots/demo-guide.png) | ![Intervention](docs/screenshots/intervention.png) |
 | **Shamal dust fouls the sensors: never shown as safe** | **Synthetic evaluation** |
 | ![Dust-fouled sensors](docs/screenshots/sensor-failure.png) | ![Evaluation](docs/screenshots/evaluation.png) |
-| **Worker health (OHS role): consented signals and escalations** | |
-| ![Worker health](docs/screenshots/worker-health.png) | |
+| **Shift plan: heavy tasks, rotation and breaks** | **Worker health (OHS role): consented signals, pairing codes** |
+| ![Shift plan](docs/screenshots/shift-plan.png) | ![Worker health](docs/screenshots/worker-health.png) |
 
 **HeatGuard Worker app** (`worker_app/`) is a separate app that workers carry with them. It is not part of the
 supervisor dashboard. It runs in any phone browser (and can be added to the home screen) and builds as an Android
-or iOS app from the same code. Workers choose their language (English, Arabic, Urdu or Hindi; draft translations
-with right-to-left layout), crew and optional badge once. The app remembers them and opens on **Today**: the heat
+or iOS app from the same code. Workers choose their language (English, Arabic, Urdu, Hindi, Malayalam or Bengali; draft translations
+with right-to-left layout for Arabic and Urdu), crew and optional badge once. A badge is linked to the phone with the
+6-digit code printed on it, so only that phone sees the badge's data. The app remembers them and opens on **Today**: the heat
 level, what to do now and the midday break. **My health** has opt-in wearable sharing with consent and deletion.
 **Emergency** has a one-tap 998 call, warning signs, first steps and "I feel unwell / report a co-worker". It
 alerts the device when the level rises.
 
-![HeatGuard Worker app: crew selection, Today, My health, Emergency, Arabic](docs/screenshots/worker-app.png)
+![HeatGuard Worker app: six languages, Today with Read aloud, My health, Emergency, Bengali](docs/screenshots/worker-app.png)
 
 > ⚠️ **All sensor data in this prototype are SIMULATED** by a built-in synthetic sensing station and labelled as
 > such throughout the UI, API and CSV exports. No physical hardware is required.
@@ -79,7 +80,7 @@ alerts the device when the level rises.
 | **Alerts** | Duplicate suppression, severity escalation with re-acknowledgement, escalation of unacknowledged alerts, no auto-clear (sustained improvement → supervisor review) |
 | **Interventions** | Hydration / cooling break / workload reduction / rotation / shift change / relocation, with optional context changes, immediate reassessment, follow-up timeline and outcome |
 | **Dashboard** | Flutter Web (Material 3, Provider, fl_chart): Overview, Live Monitoring, Crew Management, Alerts, Interventions, **Simulation Lab**, Reports (with evaluation and CSV), Settings (methodology and governance) |
-| **Worker app** | Separate Flutter app (`worker_app/`) for web, Android and iOS: onboarding, Today / My health / Emergency tabs, 4 languages with RTL, consent, symptom reports, 998 call, device alerts |
+| **Worker app** | Separate Flutter app (`worker_app/`) for web, Android and iOS: onboarding, Today / My health / Emergency tabs, 6 languages with RTL, read aloud, badge pairing code, consent, symptom reports, 998 call, device alerts |
 | **Persistence** | Firebase Realtime Database via a repository layer, or a local JSON store when no credentials are present; write-behind queue survives outages |
 | **Evaluation** | 13 repeatable synthetic cases compared with ground truth: lead time, false/missed alerts, false-safe minutes, completeness, stale detection, recovery |
 
@@ -118,6 +119,9 @@ them. With uv, use `uv pip install -r requirements.txt` instead of `pip install`
 
 This installs the Python requirements (with uv or pip) and serves everything on one port: the dashboard at
 **http://localhost:8000** and the worker app at **http://localhost:8000/worker/**.
+
+**Demo badge codes:** in the dashboard switch to the OHS role (account menu) and open **Worker health**; each badge's
+pairing code is listed there (for example CA-02: `150392`).
 
 **Worker app on a phone:** connect the phone to the same Wi-Fi as the laptop and open
 `http://<laptop-ip>:8000/worker/`. In the browser menu choose *Add to Home screen* to install it like an app.
@@ -177,7 +181,7 @@ demo server is allowed in the Android and iOS projects; use HTTPS for any real d
 ### Tests
 
 ```bash
-cd backend && python -m pytest app/tests -q          # 42 unit, API and evaluation tests
+cd backend && python -m pytest app/tests -q          # 44 unit, API and evaluation tests
 ```
 
 ```bash

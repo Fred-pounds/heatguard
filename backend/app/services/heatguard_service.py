@@ -37,7 +37,7 @@ from .wbgt_calculator import MissingComponentError, compute_wbgt
 log = logging.getLogger("heatguard.service")
 
 HISTORY_EVERY_N = 5  # persist an assessment to history at least every N readings per crew
-DEMO_SEED_VERSION = "abu-dhabi-2"  # bump when the demo worksites/crews change
+DEMO_SEED_VERSION = "abu-dhabi-3"  # bump when the demo worksites/crews change
 
 
 class NullBackend(PersistenceBackend):
@@ -102,6 +102,7 @@ class HeatGuardService:
             self.seed_demo()
             self.seed_workers()
             self.repo.set_meta({"seed_version": DEMO_SEED_VERSION})
+        self.workers.ensure_pairing_codes()
         for ws in self.repo.worksites.values():
             scenario = (self.repo.simulation.get("stations", {}).get(ws["worksite_id"], {}) or {}).get("scenario_id")
             default = "industrial_indoor" if ws["environment"] == "indoor" else "normal"
@@ -155,6 +156,7 @@ class HeatGuardService:
                 w = Worker(worker_id=f"wk_{prefix.lower()}{i:02d}", badge=f"{prefix}-{i:02d}", crew_id=crew_id,
                            device_id=f"dev-{prefix.lower()}{i:02d}", age_band=band, consent=consent, created_at=ts)
                 self.repo.save_worker(w.model_dump())
+        self.workers.ensure_pairing_codes()
 
     def warm_up(self, ticks: int) -> None:
         """Pre-populate history with simulated minutes so charts are not empty at demo start."""

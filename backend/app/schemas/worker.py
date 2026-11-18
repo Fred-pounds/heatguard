@@ -46,6 +46,16 @@ class Worker(BaseModel):
     age_band: str | None = None  # only used for the NIOSH heart-rate threshold, with consent
     consent: Consent = Field(default_factory=Consent)
     created_at: str
+    # Device pairing: a short code (printed on the badge / given by the first aider) links one phone to the badge.
+    # Only the OHS role sees the code; the server stores only a hash of the device token.
+    pairing_code: str | None = None
+    device_token_hash: str | None = None
+    paired_at: str | None = None
+
+
+class PairRequest(BaseModel):
+    worker_id: str
+    code: str = Field(min_length=4, max_length=12)
 
 
 class ConsentRequest(BaseModel):

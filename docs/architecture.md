@@ -38,6 +38,7 @@
 | Risk engine | `services/risk_engine.py`, `services/guideline.py` | Pure function of reading + context + guideline → explained assessment |
 | UAE rules | `services/regulatory.py`, `guidelines/uae_midday_break.json` | Midday-break compliance flag, urgent action and site-level alert; independent of the NIOSH category |
 | Worker signals & escalation | `services/worker_service.py`, `api/routes/workers.py`, `simulator/heatguard_sim/wearable.py` | Consent, pseudonymous badges, NIOSH physiological criteria, symptom escalation, OHS-only access |
+| Shift plan | `services/planner_service.py`, `api/routes/planner.py` | Crew-level plan for the next hours from a forecast (simulated scenario in the prototype) with the same rules as live assessment |
 | Alerts | `services/alert_engine.py` | Raise, suppress duplicates, escalate severity, re-acknowledgement, escalation of unacknowledged alerts, sustained-improvement review; never auto-resolves |
 | Interventions | `services/intervention_service.py` | Records actions, applies optional context changes, baseline + follow-up assessments, outcome |
 | Orchestration | `services/heatguard_service.py` | Ingestion pipeline, staleness detection, events, health, async loop |

@@ -14,40 +14,60 @@ class HealthTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = AppScope.of(context);
     final l = s.l;
-    return ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), children: [
-      Narrow(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(4, 4, 4, 16),
-            child: Text(l.t('health_intro'), style: const TextStyle(fontSize: 15, color: T.muted, height: 1.45)),
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+      children: [
+        Narrow(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 4, 4, 16),
+                child: Text(l.t('health_intro'), style: const TextStyle(fontSize: 15, color: T.muted, height: 1.45)),
+              ),
+              if (s.unpaired && s.workerId == null) Notice(icon: Icons.link_off, text: l.t('unpaired')),
+              if (s.workerId == null)
+                Section(
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(color: T.subtle, borderRadius: BorderRadius.circular(12)),
+                          child: const Icon(Icons.watch_outlined, color: T.muted),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Text(l.t('no_badge_health'), style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    OutlinedButton(onPressed: () => BadgePicker.show(context), child: Text(l.t('link_badge'))),
+                  ],
+                )
+              else if (s.me == null)
+                const Padding(
+                  padding: EdgeInsets.all(48),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else
+                _BadgeCard(s: s, me: s.me!),
+              Section(
+                title: l.t('what_shared'),
+                icon: Icons.privacy_tip_outlined,
+                children: [
+                  InfoRow(icon: Icons.health_and_safety_outlined, text: l.t('shared.1')),
+                  InfoRow(icon: Icons.supervisor_account_outlined, text: l.t('shared.2')),
+                  InfoRow(icon: Icons.auto_delete_outlined, text: l.t('shared.3')),
+                ],
+              ),
+            ],
           ),
-          if (s.workerId == null)
-            Section(children: [
-              Row(children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(color: T.subtle, borderRadius: BorderRadius.circular(12)),
-                  child: const Icon(Icons.watch_outlined, color: T.muted),
-                ),
-                const SizedBox(width: 14),
-                Expanded(child: Text(l.t('no_badge_health'), style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600))),
-              ]),
-              const SizedBox(height: 16),
-              OutlinedButton(onPressed: () => BadgePicker.show(context), child: Text(l.t('link_badge'))),
-            ])
-          else if (s.me == null)
-            const Padding(padding: EdgeInsets.all(48), child: Center(child: CircularProgressIndicator()))
-          else
-            _BadgeCard(s: s, me: s.me!),
-          Section(title: l.t('what_shared'), icon: Icons.privacy_tip_outlined, children: [
-            InfoRow(icon: Icons.health_and_safety_outlined, text: l.t('shared.1')),
-            InfoRow(icon: Icons.supervisor_account_outlined, text: l.t('shared.2')),
-            InfoRow(icon: Icons.auto_delete_outlined, text: l.t('shared.3')),
-          ]),
-        ]),
-      ),
-    ]);
+        ),
+      ],
+    );
   }
 }
 
@@ -90,26 +110,40 @@ class _BadgeCardState extends State<_BadgeCard> {
       children: [
         Align(
           alignment: AlignmentDirectional.centerStart,
-          child: granted
-              ? Pill(l.t('consent_on'), color: T.ok, tint: const Color(0xFFE7F6EF))
-              : Pill(l.t('consent_off')),
+          child: granted ? Pill(l.t('consent_on'), color: T.ok, tint: const Color(0xFFE7F6EF)) : Pill(l.t('consent_off')),
         ),
         const SizedBox(height: 16),
         if (granted) ...[
           if (sig.isNotEmpty) ...[
-            Row(children: [
-              _Metric(label: l.t('heart_rate'), value: sig['heart_rate'] == null ? '–' : '${(sig['heart_rate'] as num).round()}', unit: 'bpm',
-                  sub: sig['hr_limit'] == null ? null : fill(l.t('your_limit'), {'v': sig['hr_limit']})),
-              const SizedBox(width: 10),
-              _Metric(label: l.t('body_temp'), value: sig['core_temp_est'] == null ? '–' : (sig['core_temp_est'] as num).toStringAsFixed(1), unit: '°C',
-                  sub: sig['core_limit'] == null ? null : fill(l.t('your_limit'), {'v': '${sig['core_limit']} °C'})),
-            ]),
+            Row(
+              children: [
+                _Metric(
+                  label: l.t('heart_rate'),
+                  value: sig['heart_rate'] == null ? '–' : '${(sig['heart_rate'] as num).round()}',
+                  unit: 'bpm',
+                  sub: sig['hr_limit'] == null ? null : fill(l.t('your_limit'), {'v': sig['hr_limit']}),
+                ),
+                const SizedBox(width: 10),
+                _Metric(
+                  label: l.t('body_temp'),
+                  value: sig['core_temp_est'] == null ? '–' : (sig['core_temp_est'] as num).toStringAsFixed(1),
+                  unit: '°C',
+                  sub: sig['core_limit'] == null ? null : fill(l.t('your_limit'), {'v': '${sig['core_limit']} °C'}),
+                ),
+              ],
+            ),
             const SizedBox(height: 10),
-            Row(children: [
-              _Metric(label: l.t('badge_battery'), value: sig['battery_pct'] == null ? '–' : '${(sig['battery_pct'] as num).round()}', unit: '%'),
-              const SizedBox(width: 10),
-              const Expanded(child: SizedBox()),
-            ]),
+            Row(
+              children: [
+                _Metric(
+                  label: l.t('badge_battery'),
+                  value: sig['battery_pct'] == null ? '–' : '${(sig['battery_pct'] as num).round()}',
+                  unit: '%',
+                ),
+                const SizedBox(width: 10),
+                const Expanded(child: SizedBox()),
+              ],
+            ),
             const SizedBox(height: 14),
           ],
           Notice(
@@ -144,18 +178,35 @@ class _Metric extends StatelessWidget {
   final String? sub;
   @override
   Widget build(BuildContext context) => Expanded(
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(color: T.subtle, borderRadius: BorderRadius.circular(14)),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(label, maxLines: 2, style: const TextStyle(fontSize: 12.5, color: T.muted, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 6),
-            Text.rich(TextSpan(children: [
-              TextSpan(text: value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: T.text)),
-              TextSpan(text: ' $unit', style: const TextStyle(fontSize: 13, color: T.muted)),
-            ])),
-            if (sub != null) Text(sub!, style: const TextStyle(fontSize: 12, color: T.muted)),
-          ]),
-        ),
-      );
+    child: Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: T.subtle, borderRadius: BorderRadius.circular(14)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            maxLines: 2,
+            style: const TextStyle(fontSize: 12.5, color: T.muted, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 6),
+          Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: value,
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: T.text),
+                ),
+                TextSpan(
+                  text: ' $unit',
+                  style: const TextStyle(fontSize: 13, color: T.muted),
+                ),
+              ],
+            ),
+          ),
+          if (sub != null) Text(sub!, style: const TextStyle(fontSize: 12, color: T.muted)),
+        ],
+      ),
+    ),
+  );
 }

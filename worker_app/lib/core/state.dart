@@ -23,7 +23,11 @@ class WorkerState extends ChangeNotifier {
   String siteName = '';
   String? workerId;
   String? badge;
+  String? _deviceToken;
   bool alertsOn = false;
+
+  /// True after the server said this phone is no longer paired (e.g. the OHS officer issued a new code).
+  bool unpaired = false;
 
   List<J> crews = [];
   List<J> badges = [];
@@ -54,8 +58,13 @@ class WorkerState extends ChangeNotifier {
     siteName = _prefs.getString('site_name') ?? '';
     workerId = _prefs.getString('worker_id');
     badge = _prefs.getString('badge');
+    _deviceToken = _prefs.getString('device_token');
+    if (_deviceToken == null) {
+      workerId = null;
+      badge = null;
+    }
     alertsOn = (_prefs.getBool('alerts') ?? false) && (DeviceNotify.granted || !DeviceNotify.supported);
-    api = Api(ApiConfig.resolve(serverUrl));
+    api = Api(ApiConfig.resolve(serverUrl), deviceToken: _deviceToken);
     ready = true;
     notifyListeners();
     loadCatalog();
@@ -85,50 +94,74 @@ class WorkerState extends ChangeNotifier {
   Future<void> setServer(String? v) async {
     serverUrl = (v == null || v.trim().isEmpty) ? null : ApiConfig.normalise(v);
     serverUrl == null ? await _prefs.remove('server') : await _prefs.setString('server', serverUrl!);
-    api = Api(ApiConfig.resolve(serverUrl));
+    api = Api(ApiConfig.resolve(serverUrl), deviceToken: _deviceToken);
     crews = [];
     notifyListeners();
     await loadCatalog();
     await refresh();
   }
 
-  Future<void> setCrew(J crew) async {
+  Future<void> setCrew(J crew, {bool keepBadge = false}) async {
     crewId = crew['crew_id'] as String;
     crewName = '${crew['name']}';
     siteName = '${crew['worksite_name'] ?? ''}';
-    workerId = null;
-    badge = null;
+    if (!keepBadge) await unlinkBadge(notify: false);
     notice = null;
     me = null;
     _lastCategory = null;
     await _prefs.setString('crew_id', crewId!);
     await _prefs.setString('crew_name', crewName);
     await _prefs.setString('site_name', siteName);
-    await _prefs.remove('worker_id');
-    await _prefs.remove('badge');
     notifyListeners();
     await loadBadges();
     await refresh();
   }
 
-  Future<void> setBadge(String? id) async {
-    workerId = id;
-    badge = id == null ? null : '${badges.firstWhere((b) => b['worker_id'] == id, orElse: () => {'badge': id})['badge']}';
+  /// Pair this phone with a badge using its code. Returns an error string key, or null on success.
+  Future<String?> pairBadge(String id, String code) async {
+    try {
+      final r = jMap(await api.post('/worker/pair', {'worker_id': id, 'code': code.trim()}));
+      _deviceToken = '${r['device_token']}';
+      api.deviceToken = _deviceToken;
+      workerId = id;
+      badge = '${r['badge']}';
+      unpaired = false;
+      me = null;
+      await _prefs.setString('worker_id', id);
+      await _prefs.setString('badge', badge!);
+      await _prefs.setString('device_token', _deviceToken!);
+      notifyListeners();
+      refresh();
+      return null;
+    } on ApiError catch (e) {
+      return switch (e.status) {
+        403 || 422 => 'pair_wrong',
+        429 => 'pair_locked',
+        404 => 'pair_wrong',
+        _ => 'cant_connect',
+      };
+    }
+  }
+
+  /// Unlink the badge from this phone (the server-side pairing is replaced when a phone pairs again).
+  Future<void> unlinkBadge({bool notify = true}) async {
+    workerId = null;
+    badge = null;
     me = null;
-    id == null ? await _prefs.remove('worker_id') : await _prefs.setString('worker_id', id);
-    badge == null ? await _prefs.remove('badge') : await _prefs.setString('badge', badge!);
-    notifyListeners();
-    await refresh();
+    _deviceToken = null;
+    api.deviceToken = null;
+    for (final k in ['worker_id', 'badge', 'device_token']) {
+      await _prefs.remove(k);
+    }
+    if (notify) notifyListeners();
   }
 
   /// Leave the crew and go back to onboarding (used by "Change crew").
   Future<void> resetCrew() async {
     crewId = null;
-    workerId = null;
-    badge = null;
     notice = null;
-    me = null;
-    for (final k in ['crew_id', 'crew_name', 'site_name', 'worker_id', 'badge']) {
+    await unlinkBadge(notify: false);
+    for (final k in ['crew_id', 'crew_name', 'site_name']) {
       await _prefs.remove(k);
     }
     notifyListeners();
@@ -172,7 +205,18 @@ class WorkerState extends ChangeNotifier {
     if (crewId == null) return;
     try {
       notice = jMap(await api.get('/worker/$crewId'));
-      me = workerId == null ? null : jMap(await api.get('/worker/me/$workerId'));
+      if (workerId != null) {
+        try {
+          me = jMap(await api.get('/worker/me/$workerId'));
+        } on ApiError catch (e) {
+          if (e.status == 401 || e.status == 404) {
+            await unlinkBadge(notify: false);
+            unpaired = true;
+          } else {
+            rethrow;
+          }
+        }
+      }
       if (catalog.isEmpty) catalog = jMap(await api.get('/workers/catalog'));
       online = true;
       lastOk = DateTime.now();
@@ -206,12 +250,14 @@ class WorkerState extends ChangeNotifier {
   // ---------------------------------------------------------------- actions
   /// Returns the escalation level: 'first_aid' or 'emergency'.
   Future<String> reportSymptoms({required bool self, required List<String> symptoms}) async {
-    final r = jMap(await api.post('/symptoms', {
-      'crew_id': crewId,
-      'worker_id': self ? workerId : null,
-      'reported_by': self ? 'self' : 'coworker',
-      'symptoms': symptoms,
-    }));
+    final r = jMap(
+      await api.post('/symptoms', {
+        'crew_id': crewId,
+        'worker_id': self ? workerId : null,
+        'reported_by': self ? 'self' : 'coworker',
+        'symptoms': symptoms,
+      }),
+    );
     return '${r['level']}';
   }
 

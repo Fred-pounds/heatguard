@@ -5,13 +5,13 @@ the same HeatGuard API with the `worker` role. It runs on the web and builds for
 
 | Screen | What it does |
 |---|---|
-| Onboarding | Language (English, Arabic, Urdu, Hindi), crew, optional wearable badge. Remembered on the device. |
-| Today | Heat level with a 5-step scale, plain-language notice, midday break, what to do now, protective actions in place, "I feel unwell / report a co-worker". |
+| Onboarding | Language (English, Arabic, Urdu, Hindi, Malayalam, Bengali), crew, optional wearable badge linked with its 6-digit code. Remembered on the device. |
+| Today | Heat level with a 5-step scale, plain-language notice, **Read aloud** (web), what to do now (first when the level is High or above), midday break, protective actions in place, and an always-visible "I feel unwell / report a co-worker" button. |
 | My health | Opt-in wearable sharing with informed consent: own heart rate, body-temperature estimate and badge battery; stop sharing deletes the data; who sees what. |
 | Emergency | One-tap 998 call, warning signs of heat stroke, first steps, report to the first aider. |
 | Settings | Language, crew, badge, device alerts, server address (mobile), about. |
 
-Arabic and Urdu use a right-to-left layout. The Arabic, Urdu and Hindi texts are **draft translations** that must be
+Arabic and Urdu use a right-to-left layout. The non-English texts are **draft translations** that must be
 reviewed by native speakers before real use. All heat data in the prototype are simulated.
 
 ## Run

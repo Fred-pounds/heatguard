@@ -201,7 +201,8 @@ class _WorkersTable extends StatelessWidget {
     String labelFor(String st) => switch (st) { 'ok' => 'Normal', 'check' => 'Check now', 'unavailable' => 'No signal', _ => 'Not sharing' };
     return SectionCard(
       title: 'Individual signals (OHS only)',
-      subtitle: 'Pseudonymous badges. Thresholds: NIOSH 2016 physiological monitoring (heart rate above 180 - age sustained; core temperature 38.5 / 38.0 °C). Core temperature is a device estimate.',
+      subtitle: 'Pseudonymous badges. Thresholds: NIOSH 2016 physiological monitoring (heart rate above 180 - age sustained; core temperature 38.5 / 38.0 °C). Core temperature is a device estimate. '
+          'A worker links their phone to a badge with its pairing code; only that phone can see the badge\'s data.',
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
       child: Column(children: [
         Padding(
@@ -213,6 +214,7 @@ class _WorkersTable extends StatelessWidget {
             Expanded(child: Text('Core (est.)', style: t.labelMedium)),
             Expanded(child: Text('Device battery', style: t.labelMedium)),
             SizedBox(width: 120, child: Text('Status', style: t.labelMedium)),
+            SizedBox(width: 190, child: Text('Phone pairing', style: t.labelMedium)),
           ]),
         ),
         for (final w in s.workers) ...[
@@ -229,6 +231,26 @@ class _WorkersTable extends StatelessWidget {
                 Expanded(child: Text(sig['core_temp_est'] == null ? '-' : '${fmtNum(sig['core_temp_est'])} °C', style: t.bodyMedium)),
                 Expanded(child: Text(sig['battery_pct'] == null ? '-' : '${fmtNum(sig['battery_pct'], digits: 0)}%', style: t.bodyMedium)),
                 SizedBox(width: 120, child: Align(alignment: Alignment.centerLeft, child: SevChip(sevFor(st), short: true, label: labelFor(st)))),
+                SizedBox(
+                  width: 190,
+                  child: Row(children: [
+                    Tooltip(
+                      message: w['paired'] == true ? 'A phone is paired with this badge' : 'No phone paired yet',
+                      child: Icon(w['paired'] == true ? Icons.phonelink_lock_outlined : Icons.phonelink_off_outlined, size: 18, color: HG.muted),
+                    ),
+                    const SizedBox(width: 8),
+                    SelectableText('${w['pairing_code'] ?? '-'}', style: const TextStyle(fontFeatures: [FontFeature.tabularFigures()], letterSpacing: 1.2)),
+                    const Spacer(),
+                    IconButton(
+                      tooltip: 'Issue a new code for ${w['badge']} (unpairs the current phone)',
+                      icon: const Icon(Icons.refresh, size: 18),
+                      onPressed: () async {
+                        final err = await s.run((api) => api.post('/workers/${w['worker_id']}/pairing-code'));
+                        if (context.mounted) showResult(context, err, 'New pairing code issued for ${w['badge']}');
+                      },
+                    ),
+                  ]),
+                ),
               ]),
             );
           }),

@@ -3,6 +3,7 @@ import 'package:heatguard_worker/core/api.dart';
 import 'package:heatguard_worker/core/theme.dart';
 import 'package:heatguard_worker/l10n/app_strings.dart';
 import 'package:heatguard_worker/l10n/strings.dart';
+import 'package:heatguard_worker/l10n/strings_more.dart';
 
 void main() {
   test('server address is normalised to the API base', () {
@@ -23,6 +24,12 @@ void main() {
     for (final lang in ['ar', 'ur', 'hi']) {
       expect(appStrings[lang]!.keys.toSet().containsAll(keys), isTrue, reason: 'missing keys in $lang');
     }
+    for (final lang in ['ml', 'bn']) {
+      expect(moreStrings[lang]!.keys.toSet().containsAll(keys), isTrue, reason: 'missing app keys in $lang');
+      expect(L10n(lang).t('notice.critical'), isNot(L10n('en').t('notice.critical')), reason: '$lang safety notice not translated');
+      expect(L10n(lang).isRtl, isFalse);
+    }
+    expect(L10n.supported.keys, containsAll(['en', 'ar', 'ur', 'hi', 'ml', 'bn']));
     expect(const L10n('ar').isRtl, isTrue);
     expect(const L10n('hi').isRtl, isFalse);
     expect(const L10n('ur').t('app_name'), 'HeatGuard');

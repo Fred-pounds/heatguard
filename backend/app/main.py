@@ -12,7 +12,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from .api.routes import alerts, assessments, crews, interventions, reports, sensors, simulation, system, workers
+from .api.routes import alerts, assessments, crews, interventions, planner, reports, sensors, simulation, system, workers
 from .core.config import REPO_DIR, get_settings
 from .services.heatguard_service import HeatGuardService
 
@@ -52,7 +52,7 @@ def create_app() -> FastAPI:
         if not request.url.path.startswith("/api"):
             response.headers["Cache-Control"] = "no-cache"
         return response
-    for module in (system, crews, sensors, assessments, alerts, interventions, simulation, reports, workers):
+    for module in (system, crews, sensors, assessments, alerts, interventions, planner, simulation, reports, workers):
         app.include_router(module.router, prefix="/api")
     # Single-port demo. Two separate Flutter apps are served from the same server:
     #   /worker/  the worker app that workers carry (worker_app/), also buildable for Android and iOS

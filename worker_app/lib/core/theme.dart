@@ -13,7 +13,7 @@ class T {
   static const ok = Color(0xFF12805C);
   static const warn = Color(0xFFB54708);
 
-  static const fonts = ['NotoSansArabic', 'NotoSansDevanagari'];
+  static const fonts = ['NotoSansArabic', 'NotoSansDevanagari', 'NotoSansMalayalam', 'NotoSansBengali'];
 
   static ThemeData theme() {
     final base = ThemeData(
@@ -54,18 +54,26 @@ class T {
         indicatorColor: navySoft,
         elevation: 0,
         height: 68,
-        labelTextStyle: WidgetStateProperty.resolveWith((s) => TextStyle(
-              fontSize: 12.5,
-              fontWeight: s.contains(WidgetState.selected) ? FontWeight.w700 : FontWeight.w500,
-              color: s.contains(WidgetState.selected) ? navy : muted,
-            )),
+        labelTextStyle: WidgetStateProperty.resolveWith(
+          (s) => TextStyle(
+            fontSize: 12.5,
+            fontWeight: s.contains(WidgetState.selected) ? FontWeight.w700 : FontWeight.w500,
+            color: s.contains(WidgetState.selected) ? navy : muted,
+          ),
+        ),
         iconTheme: WidgetStateProperty.resolveWith((s) => IconThemeData(color: s.contains(WidgetState.selected) ? navy : muted)),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: surface,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: border)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: border)),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: border),
+        ),
       ),
       snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating, backgroundColor: navy),
     );

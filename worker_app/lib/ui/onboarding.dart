@@ -19,6 +19,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   List<J> badges = [];
   String? workerId;
   bool loadingBadges = false;
+  final code = TextEditingController();
+  String? pairError;
+  bool pairing = false;
+
+  @override
+  void dispose() {
+    code.dispose();
+    super.dispose();
+  }
 
   Future<void> _toBadges() async {
     final s = AppScope.of(context);
@@ -38,8 +47,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _finish() async {
     final s = AppScope.of(context);
     s.badges = badges;
-    await s.setCrew(crew!);
-    if (workerId != null) await s.setBadge(workerId);
+    if (workerId != null) {
+      setState(() {
+        pairing = true;
+        pairError = null;
+      });
+      final err = await s.pairBadge(workerId!, code.text);
+      if (!mounted) return;
+      setState(() {
+        pairing = false;
+        pairError = err;
+      });
+      if (err != null) return;
+    }
+    await s.setCrew(crew!, keepBadge: workerId != null);
   }
 
   @override
@@ -49,60 +70,77 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return Scaffold(
       body: SafeArea(
         child: Narrow(
-          child: Column(children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 12, 0),
-              child: Row(children: [
-                if (step > 0)
-                  IconButton(
-                    tooltip: l.t('back'),
-                    onPressed: () => setState(() => step--),
-                    icon: Icon(l.isRtl ? Icons.arrow_forward : Icons.arrow_back),
-                  )
-                else
-                  const AppLogo(size: 36),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(fill(l.t('step_of'), {'n': step + 1}), style: const TextStyle(color: T.muted, fontSize: 13.5, fontWeight: FontWeight.w600)),
-                ),
-                if (step > 0 && ApiConfig.serverEditable)
-                  IconButton(tooltip: l.t('server'), icon: const Icon(Icons.dns_outlined), onPressed: () => ServerDialog.show(context)),
-              ]),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-              child: Row(children: [
-                for (var i = 0; i < 3; i++)
-                  Expanded(
-                    child: Container(
-                      height: 4,
-                      margin: EdgeInsetsDirectional.only(end: i < 2 ? 6 : 0),
-                      decoration: BoxDecoration(color: i <= step ? T.navy : T.border, borderRadius: BorderRadius.circular(2)),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 12, 0),
+                child: Row(
+                  children: [
+                    if (step > 0)
+                      IconButton(
+                        tooltip: l.t('back'),
+                        onPressed: () => setState(() => step--),
+                        icon: Icon(l.isRtl ? Icons.arrow_forward : Icons.arrow_back),
+                      )
+                    else
+                      const AppLogo(size: 36),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        fill(l.t('step_of'), {'n': step + 1}),
+                        style: const TextStyle(color: T.muted, fontSize: 13.5, fontWeight: FontWeight.w600),
+                      ),
                     ),
-                  ),
-              ]),
-            ),
-            Expanded(child: [_language, _crew, _badge][step](context)),
-          ]),
+                    if (step > 0 && ApiConfig.serverEditable)
+                      IconButton(tooltip: l.t('server'), icon: const Icon(Icons.dns_outlined), onPressed: () => ServerDialog.show(context)),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                child: Row(
+                  children: [
+                    for (var i = 0; i < 3; i++)
+                      Expanded(
+                        child: Container(
+                          height: 4,
+                          margin: EdgeInsetsDirectional.only(end: i < 2 ? 6 : 0),
+                          decoration: BoxDecoration(color: i <= step ? T.navy : T.border, borderRadius: BorderRadius.circular(2)),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Expanded(child: [_language, _crew, _badge][step](context)),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _frame({required String title, String? body, required List<Widget> children, required Widget footer}) => Column(children: [
-        Expanded(
-          child: ListView(padding: const EdgeInsets.fromLTRB(20, 28, 20, 12), children: [
-            Text(title, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w700, color: T.text, height: 1.25)),
+  Widget _frame({required String title, String? body, required List<Widget> children, required Widget footer}) => Column(
+    children: [
+      Expanded(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
+          children: [
+            Text(
+              title,
+              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w700, color: T.text, height: 1.25),
+            ),
             if (body != null) ...[
               const SizedBox(height: 8),
               Text(body, style: const TextStyle(fontSize: 15.5, color: T.muted, height: 1.45)),
             ],
             const SizedBox(height: 24),
             ...children,
-          ]),
+          ],
         ),
-        Padding(padding: const EdgeInsets.fromLTRB(20, 8, 20, 20), child: footer),
-      ]);
+      ),
+      Padding(padding: const EdgeInsets.fromLTRB(20, 8, 20, 20), child: footer),
+    ],
+  );
 
   Widget _language(BuildContext context) {
     final s = AppScope.of(context);
@@ -111,7 +149,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       title: l.t('app_name'),
       body: l.t('tagline'),
       children: [
-        Text(l.t('choose_language'), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: T.muted)),
+        Text(
+          l.t('choose_language'),
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: T.muted),
+        ),
         const SizedBox(height: 12),
         for (final e in L10n.supported.entries)
           ChoiceTile(
@@ -121,7 +162,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             leading: CircleAvatar(
               radius: 18,
               backgroundColor: T.subtle,
-              child: Text(e.key.toUpperCase(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: T.text)),
+              child: Text(
+                e.key.toUpperCase(),
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: T.text),
+              ),
             ),
           ),
         if (l.isDraft) Text(l.t('draft'), style: const TextStyle(fontSize: 13, color: T.warn)),
@@ -142,7 +186,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       body: l.t('crew_body'),
       children: [
         if (s.crews.isEmpty && s.loadingCrews)
-          const Padding(padding: EdgeInsets.all(32), child: Center(child: CircularProgressIndicator()))
+          const Padding(
+            padding: EdgeInsets.all(32),
+            child: Center(child: CircularProgressIndicator()),
+          )
         else if (s.crews.isEmpty)
           Notice(
             icon: Icons.cloud_off_outlined,
@@ -152,18 +199,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         for (final site in sites.entries) ...[
           Padding(
             padding: const EdgeInsets.only(top: 4, bottom: 10),
-            child: Row(children: [
-              const Icon(Icons.location_on_outlined, size: 16, color: T.muted),
-              const SizedBox(width: 6),
-              Expanded(child: Text(site.key, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: T.muted))),
-            ]),
+            child: Row(
+              children: [
+                const Icon(Icons.location_on_outlined, size: 16, color: T.muted),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    site.key,
+                    style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: T.muted),
+                  ),
+                ),
+              ],
+            ),
           ),
           for (final c in site.value)
-            ChoiceTile(
-              title: '${c['name']}',
-              selected: crew?['crew_id'] == c['crew_id'],
-              onTap: () => setState(() => crew = c),
-            ),
+            ChoiceTile(title: '${c['name']}', selected: crew?['crew_id'] == c['crew_id'], onTap: () => setState(() => crew = c)),
           const SizedBox(height: 8),
         ],
       ],
@@ -178,24 +228,42 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       body: l.t('badge_body'),
       children: [
         if (loadingBadges)
-          const Padding(padding: EdgeInsets.all(32), child: Center(child: CircularProgressIndicator()))
+          const Padding(
+            padding: EdgeInsets.all(32),
+            child: Center(child: CircularProgressIndicator()),
+          )
         else ...[
           ChoiceTile(
             title: l.t('no_badge'),
             selected: workerId == null,
-            onTap: () => setState(() => workerId = null),
+            onTap: () => setState(() {
+              workerId = null;
+              pairError = null;
+            }),
             leading: const Icon(Icons.do_not_disturb_alt_outlined, color: T.muted),
           ),
           for (final b in badges)
             ChoiceTile(
               title: '${b['badge']}',
               selected: workerId == b['worker_id'],
-              onTap: () => setState(() => workerId = b['worker_id'] as String),
+              onTap: () => setState(() {
+                workerId = b['worker_id'] as String;
+                pairError = null;
+              }),
               leading: const Icon(Icons.watch_outlined, color: T.navy),
             ),
+          if (workerId != null) ...[
+            const SizedBox(height: 8),
+            PairCodeField(controller: code, error: pairError == null ? null : l.t(pairError!), onChanged: () => setState(() {})),
+          ],
         ],
       ],
-      footer: FilledButton(onPressed: loadingBadges ? null : _finish, child: Text(l.t('continue'))),
+      footer: FilledButton(
+        onPressed: loadingBadges || pairing || (workerId != null && code.text.trim().length < 6) ? null : _finish,
+        child: pairing
+            ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+            : Text(l.t(workerId == null ? 'continue' : 'pair_button')),
+      ),
     );
   }
 }

@@ -44,11 +44,18 @@ class ApiError implements Exception {
 
 /// Minimal client for the worker-facing HeatGuard endpoints (role: worker).
 class Api {
-  Api(this.baseUrl);
+  Api(this.baseUrl, {this.deviceToken});
   String baseUrl;
+
+  /// Proves this phone is paired with the worker's badge (needed for the worker's own data).
+  String? deviceToken;
   final _client = http.Client();
   static const _timeout = Duration(seconds: 8);
-  static const _headers = {'Content-Type': 'application/json', 'X-HeatGuard-Role': 'worker'};
+  Map<String, String> get _headers => {
+    'Content-Type': 'application/json',
+    'X-HeatGuard-Role': 'worker',
+    'X-HeatGuard-Device': ?deviceToken,
+  };
 
   Future<dynamic> get(String path) => _send(() => _client.get(Uri.parse('$baseUrl$path'), headers: _headers));
 

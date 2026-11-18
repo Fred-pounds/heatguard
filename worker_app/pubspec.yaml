@@ -80,6 +80,16 @@ flutter:
         - asset: assets/fonts/NotoSansDevanagari_400Regular.ttf
         - asset: assets/fonts/NotoSansDevanagari_700Bold.ttf
           weight: 700
+    - family: NotoSansMalayalam
+      fonts:
+        - asset: assets/fonts/NotoSansMalayalam_400Regular.ttf
+        - asset: assets/fonts/NotoSansMalayalam_700Bold.ttf
+          weight: 700
+    - family: NotoSansBengali
+      fonts:
+        - asset: assets/fonts/NotoSansBengali_400Regular.ttf
+        - asset: assets/fonts/NotoSansBengali_700Bold.ttf
+          weight: 700
 
   # To add assets to your application, add an assets section, like this:
   # assets:

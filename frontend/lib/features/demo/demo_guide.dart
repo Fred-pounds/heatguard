@@ -227,6 +227,17 @@ final demoSteps = <DemoStep>[
     },
   ),
   DemoStep(
+    'Plan the shift',
+    '"A July morning at 07:00. The shift plan looks ahead for each crew: do the heaviest work before it gets too hot, '
+        'start a work/rest schedule on time, stop strenuous work when no schedule is enough, and respect the midday break. '
+        'Crew level only, no individual data."',
+    'Open the shift plan',
+    (ctx, api, nav) async {
+      await api.post('/simulation/scenario', {'worksite_id': _site, 'scenario_id': 'increasing_heat'});
+      nav.go(Nav.plan);
+    },
+  ),
+  DemoStep(
     'UAE midday break',
     '"Summer in Abu Dhabi: we jump to 12:35 on a July day. Besides the heat-stress level, HeatGuard checks the UAE midday break: '
         'outdoor work in direct sun is not permitted from 12:30 to 15:00, 15 June to 15 September. It raises a separate compliance alert."',

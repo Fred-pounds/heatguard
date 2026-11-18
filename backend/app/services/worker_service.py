@@ -11,8 +11,11 @@ Governance built in:
 """
 from __future__ import annotations
 
+import hashlib
+import hmac
+import secrets
 from collections import deque
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Callable
 
 from ..repositories.repository import HeatGuardRepository
@@ -34,6 +37,23 @@ SIGNAL_STALE_SECONDS = 30
 LOW_DEVICE_BATTERY = 15.0
 AGE_UPPER = {"18-29": 29, "30-39": 39, "40-49": 49, "50-59": 59, "60+": 70}
 NIOSH_SOURCE = "NIOSH 2016, physiological monitoring criteria"
+MAX_PAIR_ATTEMPTS = 5
+PAIR_LOCK_MINUTES = 10
+
+
+def demo_pairing_code(worker_id: str) -> str:
+    """Stable 6-digit code for the SIMULATED demo badges, so a demo can be rehearsed. Real badges get random codes."""
+    return f"{int(hashlib.sha256(f'heatguard-demo:{worker_id}'.encode()).hexdigest(), 16) % 1_000_000:06d}"
+
+
+def _hash(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+class PairingError(Exception):
+    def __init__(self, message: str, status: int):
+        super().__init__(message)
+        self.status = status
 
 
 class WorkerService:
@@ -41,6 +61,58 @@ class WorkerService:
         self.repo = repo
         self.clock = clock
         self.signals: dict[str, deque] = {}
+        self._failed_pairs: dict[str, list[datetime]] = {}
+
+    # ------------------------------------------------------------------ device pairing
+    def ensure_pairing_codes(self) -> None:
+        for w in self.repo.workers.values():
+            if not w.get("pairing_code"):
+                w["pairing_code"] = demo_pairing_code(w["worker_id"])
+                self.repo.save_worker(w)
+
+    def pair(self, worker_id: str, code: str) -> str:
+        """Link this device to a badge. Returns a device token; only its hash is stored."""
+        w = self.repo.workers.get(worker_id)
+        if not w:
+            raise PairingError("Unknown badge", 404)
+        now = self.clock()
+        recent = [t for t in self._failed_pairs.get(worker_id, []) if now - t < timedelta(minutes=PAIR_LOCK_MINUTES)]
+        self._failed_pairs[worker_id] = recent
+        if len(recent) >= MAX_PAIR_ATTEMPTS:
+            raise PairingError(f"Too many wrong codes. Try again in {PAIR_LOCK_MINUTES} minutes or ask the first aider.", 429)
+        if not w.get("pairing_code") or not hmac.compare_digest(code.strip(), w["pairing_code"]):
+            recent.append(now)
+            raise PairingError("Wrong code", 403)
+        self._failed_pairs.pop(worker_id, None)
+        token = secrets.token_urlsafe(24)
+        w["device_token_hash"] = _hash(token)  # one device per badge: pairing a new phone unpairs the old one
+        w["paired_at"] = now_iso()
+        self.repo.save_worker(w)
+        self.repo.add_event({"event_id": new_id("evt"), "timestamp": now.isoformat(), "type": "badge_paired",
+                             "worksite_id": None, "detail": f"Badge {w['badge']} paired with a phone", "data": {}})
+        return token
+
+    def check_device(self, worker_id: str, token: str | None) -> dict:
+        w = self.repo.workers.get(worker_id)
+        if not w:
+            raise PairingError("Unknown badge", 404)
+        if not token or not w.get("device_token_hash") or not hmac.compare_digest(_hash(token), w["device_token_hash"]):
+            raise PairingError("This phone is not paired with this badge", 401)
+        return w
+
+    def reissue_code(self, worker_id: str) -> dict:
+        """OHS: new random code; the currently paired phone is unpaired."""
+        w = self.repo.workers[worker_id]
+        w["pairing_code"] = f"{secrets.randbelow(1_000_000):06d}"
+        w["device_token_hash"] = None
+        w["paired_at"] = None
+        self.repo.save_worker(w)
+        return w
+
+    @staticmethod
+    def public(w: dict) -> dict:
+        """Worker record without secrets (the token hash is never returned)."""
+        return {k: v for k, v in w.items() if k != "device_token_hash"} | {"paired": bool(w.get("device_token_hash"))}
 
     # ------------------------------------------------------------------ registry & consent
     def workers_for_crew(self, crew_id: str) -> list[dict]:

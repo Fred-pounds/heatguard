@@ -28,6 +28,8 @@ Key endpoints:
 | Reports | `GET /api/reports/summary`, `GET /api/reports/export?kind=summary|readings|assessments|alerts|interventions|evaluation`, `POST /api/evaluation/run` |
 | Worker | `GET /api/worker/crews`, `GET /api/worker/{crew_id}`, `GET /api/worker/badges/{crew_id}`, `GET /api/worker/me/{id}`, `POST /api/worker/me/{id}/consent` |
 | Worker health | `GET /api/workers/catalog`, `GET /api/workers/summary` (supervisor: counts only), `GET /api/workers` (OHS), `POST /api/workers/signals` (consent enforced) |
+| Pairing | `POST /api/worker/pair` (badge code → device token), `POST /api/workers/{id}/pairing-code` (OHS: new code). `GET/POST /api/worker/me/{id}...` need the `X-HeatGuard-Device` token |
+| Planning | `GET /api/planner/{worksite_id}?hours=6&step=30` (supervisor) |
 | Escalation | `POST /api/symptoms`, `GET /api/escalations` (redacted unless OHS), `POST /api/escalations/{id}` (outcome: OHS only) |
 
 See `../docs/` for the methodology and architecture.

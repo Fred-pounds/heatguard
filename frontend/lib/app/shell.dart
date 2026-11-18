@@ -7,6 +7,7 @@ import '../features/alerts/alerts_page.dart';
 import '../features/crews/crews_page.dart';
 import '../features/demo/demo_guide.dart';
 import '../features/health/worker_health_page.dart';
+import '../features/planner/shift_plan_page.dart';
 import '../services/worker_link.dart';
 import '../features/interventions/interventions_page.dart';
 import '../features/monitoring/monitoring_page.dart';
@@ -39,6 +40,7 @@ const _items = [
   _NavItem('Live Monitoring', Icons.thermostat_outlined, 'Current conditions and crew assessments'),
   _NavItem('Alerts', Icons.notifications_none_rounded, 'Acknowledge and act on alerts', group: 'Act'),
   _NavItem('Interventions', Icons.healing_outlined, 'Protective actions taken and their effect'),
+  _NavItem('Shift plan', Icons.event_note_outlined, 'Plan heavy tasks, rotation and breaks for the rest of the shift'),
   _NavItem('Worker health', Icons.monitor_heart_outlined, 'Consented wearable signals and symptom escalations'),
   _NavItem('Crews', Icons.groups_outlined, 'Work context used for each assessment', group: 'Manage'),
   _NavItem('Simulation Lab', Icons.science_outlined, 'Drive the simulated sensing station'),
@@ -48,7 +50,7 @@ const _items = [
 
 // Indices used for in-app navigation
 class Nav {
-  static const overview = 0, monitoring = 1, alerts = 2, interventions = 3, health = 4, crews = 5, lab = 6, reports = 7, settings = 8;
+  static const overview = 0, monitoring = 1, alerts = 2, interventions = 3, plan = 4, health = 5, crews = 6, lab = 7, reports = 8, settings = 9;
 }
 
 class Shell extends StatelessWidget {
@@ -59,6 +61,7 @@ class Shell extends StatelessWidget {
     MonitoringPage(),
     AlertsPage(),
     InterventionsPage(),
+    ShiftPlanPage(),
     WorkerHealthPage(),
     CrewsPage(),
     SimulationLabPage(),

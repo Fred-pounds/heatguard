@@ -227,7 +227,17 @@ The projection is labelled and is not a weather forecast.
 * **Battery:** below 25% raises a maintenance alert. A dead station is detected as stale data. A wearable battery
   below 15% is flagged.
 
-## 14. Limitations
+## 14. Shift plan
+
+The shift plan assesses each crew for the next 6 hours in 30-minute steps (the first column is "now") with the same
+rules as the live assessment, using normal continuous work as the baseline. Each step shows the work/rest schedule
+that keeps exposure within the limit, or "stop" when no schedule is enough, plus the UAE midday break and the crew's
+shift hours. From this it states: when to schedule the heaviest tasks, when a work/rest schedule must start, when
+strenuous work must stop, and when conditions ease. In the prototype the conditions ahead come from the simulated
+scenario for the site (labelled SIMULATED); in a pilot they come from the site's hourly weather forecast converted to
+WBGT. The plan is a planning aid: live measurements and alerts always take precedence.
+
+## 15. Limitations
 
 * RAL/REL apply to healthy workers. Individual susceptibility is not assessed.
 * Metabolic rates are category estimates.

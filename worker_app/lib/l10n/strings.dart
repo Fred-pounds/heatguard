@@ -1,4 +1,5 @@
 import 'app_strings.dart';
+import 'strings_more.dart';
 
 /// Worker-facing strings: English plus DRAFT Arabic, Urdu and Hindi for the UAE workforce.
 ///
@@ -7,7 +8,7 @@ import 'app_strings.dart';
 /// real use. The app shows a "draft translation" notice whenever a non-English language is active.
 /// Missing keys fall back to English.
 class L10n {
-  static const supported = {'en': 'English', 'ar': 'العربية', 'ur': 'اردو', 'hi': 'हिन्दी'};
+  static const supported = {'en': 'English', 'ar': 'العربية', 'ur': 'اردو', 'hi': 'हिन्दी', 'ml': 'മലയാളം', 'bn': 'বাংলা'};
   static const rtl = {'ar', 'ur'};
 
   static const Map<String, Map<String, String>> _strings = {
@@ -21,7 +22,8 @@ class L10n {
       'notice.elevated': 'Heat risk is raised. Take your scheduled rest breaks in the shade and drink water every 15-20 minutes.',
       'notice.high': 'High heat risk. Follow the work-rest schedule from your supervisor. Rest in shade or a cool area.',
       'notice.critical': 'Very high heat risk. Strenuous work should stop. Follow your supervisor\'s instructions now.',
-      'notice.unavailable': 'Heat conditions cannot be checked right now. This does NOT mean it is safe. Keep drinking water and take breaks.',
+      'notice.unavailable':
+          'Heat conditions cannot be checked right now. This does NOT mean it is safe. Keep drinking water and take breaks.',
       'level.routine': 'Normal',
       'level.caution': 'Caution',
       'level.elevated': 'Raised',
@@ -49,7 +51,8 @@ class L10n {
       'unwell_sent_first_aid': 'Help is coming. Rest in the shade, drink water and wait for the first aider.',
       'unwell_sent_emergency': 'Call 998 now. Move them to shade and cool them with water. The first aider has been alerted.',
       'consent_title': 'Share my wearable signals (optional)',
-      'consent_body': 'If you agree, your heart rate and estimated body temperature are checked against health limits to warn you earlier. '
+      'consent_body':
+          'If you agree, your heart rate and estimated body temperature are checked against health limits to warn you earlier. '
           'Only the health and safety officer sees your values; your supervisor only sees that someone needs a check. '
           'Signals are deleted after 2 hours, never used for discipline, and you can stop at any time.',
       'consent_age': 'My age group',
@@ -111,7 +114,8 @@ class L10n {
       'unwell_sent_first_aid': 'المساعدة في الطريق. استرح في الظل واشرب الماء وانتظر المسعف.',
       'unwell_sent_emergency': 'اتصل بـ 998 الآن. انقله إلى الظل وبرّده بالماء. تم إبلاغ المسعف.',
       'consent_title': 'مشاركة إشارات جهازي القابل للارتداء (اختياري)',
-      'consent_body': 'إذا وافقت، تتم مقارنة معدل نبضات قلبك ودرجة حرارة جسمك التقديرية بالحدود الصحية لتحذيرك مبكرًا. '
+      'consent_body':
+          'إذا وافقت، تتم مقارنة معدل نبضات قلبك ودرجة حرارة جسمك التقديرية بالحدود الصحية لتحذيرك مبكرًا. '
           'يرى مسؤول الصحة والسلامة قيمك فقط؛ ويرى مشرفك فقط أن شخصًا ما يحتاج إلى فحص. '
           'تُحذف الإشارات بعد ساعتين، ولا تُستخدم أبدًا لأغراض تأديبية، ويمكنك التوقف في أي وقت.',
       'consent_age': 'فئتي العمرية',
@@ -204,7 +208,8 @@ class L10n {
       'unwell_sent_first_aid': 'مدد آ رہی ہے۔ سائے میں آرام کریں، پانی پئیں اور فرسٹ ایڈر کا انتظار کریں۔',
       'unwell_sent_emergency': 'ابھی 998 پر کال کریں۔ اسے سائے میں لے جائیں اور پانی سے ٹھنڈا کریں۔ فرسٹ ایڈر کو اطلاع دے دی گئی ہے۔',
       'consent_title': 'اپنے پہننے والے آلے کے سگنل شیئر کریں (اختیاری)',
-      'consent_body': 'اگر آپ متفق ہیں تو آپ کی دل کی دھڑکن اور جسم کے اندازاً درجہ حرارت کو صحت کی حدود سے ملایا جاتا ہے تاکہ آپ کو پہلے خبردار کیا جا سکے۔ '
+      'consent_body':
+          'اگر آپ متفق ہیں تو آپ کی دل کی دھڑکن اور جسم کے اندازاً درجہ حرارت کو صحت کی حدود سے ملایا جاتا ہے تاکہ آپ کو پہلے خبردار کیا جا سکے۔ '
           'آپ کی قدریں صرف صحت و حفاظت کا افسر دیکھتا ہے؛ آپ کا سپروائزر صرف یہ دیکھتا ہے کہ کسی کو چیک کی ضرورت ہے۔ '
           'سگنل 2 گھنٹے بعد حذف ہو جاتے ہیں، کبھی تادیبی کارروائی کے لیے استعمال نہیں ہوتے، اور آپ کسی بھی وقت روک سکتے ہیں۔',
       'consent_age': 'میری عمر کا گروپ',
@@ -269,7 +274,8 @@ class L10n {
       'notice.elevated': 'गर्मी का जोखिम बढ़ा हुआ है। तय आराम के ब्रेक छाया में लें और हर 15-20 मिनट में पानी पिएँ।',
       'notice.high': 'गर्मी का जोखिम अधिक है। अपने सुपरवाइज़र के काम-आराम शेड्यूल का पालन करें। छाया या ठंडी जगह में आराम करें।',
       'notice.critical': 'गर्मी का जोखिम बहुत अधिक है। भारी काम रुकना चाहिए। अभी अपने सुपरवाइज़र के निर्देशों का पालन करें।',
-      'notice.unavailable': 'अभी गर्मी की स्थिति जाँची नहीं जा सकती। इसका मतलब यह नहीं कि स्थिति सुरक्षित है। पानी पीते रहें और ब्रेक लेते रहें।',
+      'notice.unavailable':
+          'अभी गर्मी की स्थिति जाँची नहीं जा सकती। इसका मतलब यह नहीं कि स्थिति सुरक्षित है। पानी पीते रहें और ब्रेक लेते रहें।',
       'level.routine': 'सामान्य',
       'level.caution': 'सावधानी',
       'level.elevated': 'बढ़ा हुआ',
@@ -297,7 +303,8 @@ class L10n {
       'unwell_sent_first_aid': 'मदद आ रही है। छाया में आराम करें, पानी पिएँ और फर्स्ट एडर का इंतज़ार करें।',
       'unwell_sent_emergency': 'अभी 998 पर कॉल करें। उसे छाया में ले जाएँ और पानी से ठंडा करें। फर्स्ट एडर को सूचित कर दिया गया है।',
       'consent_title': 'अपने पहनने योग्य डिवाइस के संकेत साझा करें (वैकल्पिक)',
-      'consent_body': 'यदि आप सहमत हैं, तो आपकी हृदय गति और शरीर के अनुमानित तापमान की तुलना स्वास्थ्य सीमाओं से की जाती है ताकि आपको पहले चेतावनी मिल सके। '
+      'consent_body':
+          'यदि आप सहमत हैं, तो आपकी हृदय गति और शरीर के अनुमानित तापमान की तुलना स्वास्थ्य सीमाओं से की जाती है ताकि आपको पहले चेतावनी मिल सके। '
           'आपके मान केवल स्वास्थ्य और सुरक्षा अधिकारी देखता है; आपका सुपरवाइज़र केवल यह देखता है कि किसी को जाँच की ज़रूरत है। '
           'संकेत 2 घंटे बाद हटा दिए जाते हैं, कभी अनुशासनात्मक कार्रवाई के लिए इस्तेमाल नहीं होते, और आप कभी भी रोक सकते हैं।',
       'consent_age': 'मेरा आयु समूह',
@@ -361,8 +368,8 @@ class L10n {
   bool get isDraft => lang != 'en';
 
   String t(String key) =>
-      _strings[lang]?[key] ?? appStrings[lang]?[key] ?? _strings['en']![key] ?? appStrings['en']![key] ?? key;
+      _strings[lang]?[key] ?? moreStrings[lang]?[key] ?? appStrings[lang]?[key] ?? _strings['en']![key] ?? appStrings['en']![key] ?? key;
 
   /// Translation if one exists for [key]; otherwise the provided English [fallback].
-  String or(String key, String fallback) => _strings[lang]?[key] ?? appStrings[lang]?[key] ?? fallback;
+  String or(String key, String fallback) => _strings[lang]?[key] ?? moreStrings[lang]?[key] ?? appStrings[lang]?[key] ?? fallback;
 }
