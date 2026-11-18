@@ -5,7 +5,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PORT="${PORT:-8000}"
 
-if [ ! -f "$ROOT/frontend/build/web/index.html" ]; then
+if [ ! -f "$ROOT/frontend/build/web/index.html" ] && [ ! -f "$ROOT/frontend/dist/index.html" ]; then
   if command -v flutter >/dev/null 2>&1; then
     echo "Building Flutter Web dashboard..."
     (cd "$ROOT/frontend" && flutter pub get && flutter build web --release --no-web-resources-cdn \

@@ -29,7 +29,19 @@ diagnose heat illness or clear workers to resume work.
 
 ## Quick start
 
-### Requirements
+### Fastest: Python only (prebuilt dashboard included)
+
+```bash
+git clone https://github.com/Fred-pounds/heatguard.git
+cd heatguard/backend
+pip install -r requirements.txt
+python -m uvicorn app.main:app --port 8000
+```
+
+Open **http://localhost:8000** (worker view: **http://localhost:8000/#/worker**). A prebuilt dashboard ships in
+`frontend/dist`, so Flutter is only needed if you change the frontend.
+
+### Requirements for development
 * Python 3.11+
 * Flutter 3.24+ with web support (developed on Flutter 3.50 / Dart 3.11)
 
@@ -70,7 +82,7 @@ cd frontend
 flutter build web --release --no-web-resources-cdn
 ```
 
-The backend serves `frontend/build/web` automatically when it exists. `--no-web-resources-cdn` bundles CanvasKit,
+The backend serves `frontend/build/web` when it exists, otherwise the committed `frontend/dist`. After changing the frontend, refresh `frontend/dist` with the new build. `--no-web-resources-cdn` bundles CanvasKit,
 and the Roboto font is bundled too, so the demo works without internet.
 
 ### Tests
