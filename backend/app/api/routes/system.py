@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import Counter
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from ...schemas.intervention import INTERVENTION_LABELS
 from ...services.heatguard_service import HeatGuardService
@@ -15,8 +15,8 @@ router = APIRouter(tags=["system"])
 
 
 @router.get("/health")
-async def health(svc: HeatGuardService = Depends(get_service)):
-    return svc.health()
+async def health(request: Request, svc: HeatGuardService = Depends(get_service)):
+    return {**svc.health(), "dashboard_dir": getattr(request.app.state, "dashboard_dir", None)}
 
 
 @router.get("/meta")

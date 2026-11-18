@@ -49,10 +49,14 @@ def create_app() -> FastAPI:
     for module in (system, crews, sensors, assessments, alerts, interventions, simulation, reports):
         app.include_router(module.router, prefix="/api")
     # Single-port demo: serve the Flutter Web build if it has been built
-    # Prefer a fresh local build; fall back to the prebuilt copy committed in frontend/dist
-    web = next((d for d in (REPO_DIR / "frontend" / "build" / "web", REPO_DIR / "frontend" / "dist")
-                if (d / "index.html").exists()), None)
+    # Serve whichever dashboard is newest: a local Flutter build (frontend/build/web) or the prebuilt
+    # copy committed in frontend/dist. A stale local build must never hide an updated dist after `git pull`.
+    candidates = [d for d in (REPO_DIR / "frontend" / "build" / "web", REPO_DIR / "frontend" / "dist")
+                  if (d / "main.dart.js").exists()]
+    web = max(candidates, key=lambda d: (d / "main.dart.js").stat().st_mtime, default=None)
+    app.state.dashboard_dir = str(web) if web else None
     if web is not None:
+        logging.getLogger("heatguard").info("Serving dashboard from %s", web)
         app.mount("/", StaticFiles(directory=web, html=True), name="dashboard")
     return app
 
