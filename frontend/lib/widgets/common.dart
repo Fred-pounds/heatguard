@@ -127,11 +127,16 @@ class StatCard extends StatelessWidget {
           padding: const EdgeInsets.all(18),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
+              if (color != null) ...[
+                Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+                const SizedBox(width: 8),
+              ],
               Expanded(child: Text(label, style: t.labelMedium, maxLines: 1, overflow: TextOverflow.ellipsis)),
-              if (icon != null) Icon(icon, size: 18, color: color ?? HG.muted),
+              if (icon != null) Icon(icon, size: 18, color: HG.muted),
             ]),
             const SizedBox(height: 8),
-            Text(value, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, color: color ?? HG.text, height: 1.1)),
+            // Values stay neutral; status colour is limited to the small dot.
+            Text(value, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w700, color: HG.text, height: 1.1)),
             if (footnote != null) ...[
               const SizedBox(height: 4),
               Text(footnote!, style: t.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),

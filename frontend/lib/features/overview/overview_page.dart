@@ -92,49 +92,48 @@ class _StatusHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final allGood = attention.isEmpty;
-    final top = allGood ? Sev.routine : Sev.of(attention.first.category);
     final title = allGood
         ? 'All crews are within heat-stress guidance'
         : '${attention.length} ${attention.length == 1 ? 'crew needs' : 'crews need'} attention';
+    final subtitle = allGood
+        ? 'Continue routine monitoring. Keep water and shade available.'
+        : okCount == 0
+            ? 'No crew is currently within guidance.'
+            : '$okCount other ${okCount == 1 ? 'crew is' : 'crews are'} within guidance.';
     return Card(
-      clipBehavior: Clip.antiAlias,
-      child: Container(
-        decoration: BoxDecoration(border: Border(left: BorderSide(color: top.color, width: 5))),
-        padding: const EdgeInsets.fromLTRB(24, 22, 24, 22),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 22, 24, 14),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Row(children: [
-            Icon(allGood ? Icons.check_circle_outline : Icons.priority_high_rounded, color: top.color, size: 28),
-            const SizedBox(width: 12),
-            Expanded(child: Text(title, style: t.headlineSmall)),
-            if (!allGood) FilledButton(onPressed: onReview, child: const Text('Review alerts')),
-          ]),
-          Padding(
-            padding: const EdgeInsets.only(left: 40, top: 4),
-            child: Text(
-              allGood
-                  ? 'Continue routine monitoring. Keep water and shade available.'
-                  : okCount == 0
-                      ? 'No crew is currently within guidance.'
-                      : '$okCount other ${okCount == 1 ? 'crew is' : 'crews are'} within guidance.',
-              style: t.bodyMedium?.copyWith(color: HG.muted),
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(title, style: t.headlineSmall),
+                const SizedBox(height: 4),
+                Text(subtitle, style: t.bodyMedium?.copyWith(color: HG.muted)),
+              ]),
             ),
-          ),
+            if (!allGood) OutlinedButton(onPressed: onReview, child: const Text('Review alerts')),
+          ]),
           if (!allGood) ...[
             const SizedBox(height: 16),
-            for (final a in attention.take(5))
+            for (final a in attention.take(5)) ...[
+              const Divider(),
               InkWell(
                 borderRadius: BorderRadius.circular(8),
                 onTap: () => showCrewAssessment(context, a.crewId),
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(40, 10, 4, 10),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                   child: Row(children: [
-                    SizedBox(width: 150, child: Align(alignment: Alignment.centerLeft, child: SevChip(a.middayBreak && a.level < 2 ? 'regulatory' : a.category, short: true))),
-                    SizedBox(width: 180, child: Text(a.crewName, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600))),
+                    SizedBox(width: 200, child: Text(a.crewName, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600))),
                     Expanded(child: Text(_reason(a), style: t.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis)),
+                    const SizedBox(width: 12),
+                    SevChip(a.middayBreak && a.level < 2 ? 'regulatory' : a.category, short: true),
+                    const SizedBox(width: 4),
                     const Icon(Icons.chevron_right, color: HG.muted),
                   ]),
                 ),
               ),
+            ],
           ],
         ]),
       ),
