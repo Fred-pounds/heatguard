@@ -16,6 +16,16 @@ if [ ! -f "$ROOT/frontend/build/web/index.html" ] && [ ! -f "$ROOT/frontend/dist
 fi
 
 cd "$ROOT/backend"
-python3 -m pip install -q -r requirements.txt
+if command -v uv >/dev/null 2>&1; then
+  # uv-managed virtual environments have no pip; install into the active venv (or backend/.venv).
+  [ -n "${VIRTUAL_ENV:-}" ] || [ -d .venv ] || uv venv -q .venv
+  [ -n "${VIRTUAL_ENV:-}" ] || source .venv/bin/activate
+  uv pip install -q -r requirements.txt
+elif python3 -m pip --version >/dev/null 2>&1; then
+  python3 -m pip install -q -r requirements.txt
+else
+  echo "Neither uv nor pip is available. Install uv (https://docs.astral.sh/uv/) or run: python3 -m ensurepip" >&2
+  exit 1
+fi
 echo "HeatGuard running at http://localhost:${PORT}  (worker view: http://localhost:${PORT}/#/worker)"
 exec python3 -m uvicorn app.main:app --host 0.0.0.0 --port "$PORT"
