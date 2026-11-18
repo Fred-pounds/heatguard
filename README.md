@@ -48,8 +48,8 @@ mornings and summer afternoons on site.
 | Explained assessment and guided demo | Intervention tracking |
 |---|---|
 | ![Demo guide](docs/screenshots/demo-guide.png) | ![Intervention](docs/screenshots/intervention.png) |
-| **Sensor failure: never shown as safe** | **Synthetic evaluation** |
-| ![Sensor failure](docs/screenshots/sensor-failure.png) | ![Evaluation](docs/screenshots/evaluation.png) |
+| **Shamal dust fouls the sensors: never shown as safe** | **Synthetic evaluation** |
+| ![Dust-fouled sensors](docs/screenshots/sensor-failure.png) | ![Evaluation](docs/screenshots/evaluation.png) |
 | **Worker health (OHS role): consented signals and escalations** | |
 | ![Worker health](docs/screenshots/worker-health.png) | |
 
