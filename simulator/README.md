@@ -22,20 +22,24 @@ These are consistency heuristics for demonstration and **not a validated thermal
 `data_origin: "SIMULATED"`. `ground_truth` (noise-free values) is used only by the evaluation module and is
 never sent to clients.
 
-## Scenarios
+## Scenarios (Abu Dhabi climate)
 
-| Code | id | Environment | Description |
-|---|---|---|---|
-| A | `normal` | outdoor | Early morning, light cloud, breeze; WBGT ≈ 23–25 °C |
-| B | `increasing_heat` | outdoor | Build-up to midday; WBGT ≈ 24.5 → 33 °C over 3 h |
-| C | `construction_radiant` | outdoor | Concrete deck, full sun, low wind; WBGT ≈ 28.5–31 °C |
-| D | `industrial_indoor` | indoor | Furnace radiant heat, poor ventilation; WBGT ≈ 27.5–29.5 °C |
-| E | `sensor_failure` | outdoor | Globe drop-out (min 15–30), invalid wet-bulb (40–55), full outage (70–85) |
+| Code | id | Date | Environment | Description |
+|---|---|---|---|---|
+| A | `normal` | 12 Nov | outdoor | Cool-season coastal morning, sea breeze; WBGT about 23–25 °C |
+| B | `increasing_heat` | 15 Jul | outdoor | 07:00 to 13:00, air up to 43 °C; WBGT about 25.5 → 35.5 °C; crosses the 12:30 midday break |
+| C | `construction_radiant` | 15 Jul | outdoor | Exposed deck after the midday break (15:00), 40+ °C, dry air; WBGT about 31–33.5 °C |
+| F | `humid_coastal` | 10 Aug | outdoor | Gulf-coast morning, humidity above 80 %; WBGT about 32–34.5 °C at only 33–37 °C air |
+| D | `industrial_indoor` | 10 Aug | indoor | Metal-processing hall, partial cooling, furnace radiant heat; WBGT about 28–30 °C |
+| E | `sensor_failure` | 25 Sep | outdoor | Globe drop-out (min 15–30), invalid wet-bulb (40–55), full outage (70–85) |
+
+Every reading carries `sim_date` and `sim_clock` (Gulf Standard Time), which the backend uses for the UAE
+midday-break rule.
 
 ## Standalone client
 
 ```bash
-python simulator.py --api http://localhost:8000/api --worksite ws_kumasi_tower --scenario increasing_heat --interval 3
+python simulator.py --api http://localhost:8000/api --worksite ws_saadiyat_tower --scenario increasing_heat --interval 3
 ```
 
 Run the backend with `HEATGUARD_SIM_AUTOSTART=false` so the readings are not duplicated.

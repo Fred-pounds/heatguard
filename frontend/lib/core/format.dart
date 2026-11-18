@@ -50,3 +50,11 @@ const regimeLabels = {
   '30_30': '30 work / 30 rest',
   '15_45': '15 work / 45 rest',
 };
+
+/// Site-local time label for Abu Dhabi sites (Gulf Standard Time, UTC+4).
+String siteTime(String? clock, {String? date}) {
+  if (clock == null) return '-';
+  if (date == null) return '$clock GST';
+  final d = DateTime.tryParse(date);
+  return d == null ? '$clock GST' : '${DateFormat('d MMM').format(d)}, $clock GST';
+}

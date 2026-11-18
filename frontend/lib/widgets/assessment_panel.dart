@@ -33,6 +33,10 @@ class _AssessmentPanelState extends State<AssessmentPanel> {
     final shown = showAllActions ? a.actions : primary.take(4).toList();
 
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (a.middayBreak) ...[
+        _MiddayBanner(flag: a.regulatoryFlags.first),
+        const SizedBox(height: 16),
+      ],
       // ---- Summary
       Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
         SevChip(a.category, large: true),
@@ -216,4 +220,27 @@ class _LimitBar extends StatelessWidget {
       );
     });
   }
+}
+
+class _MiddayBanner extends StatelessWidget {
+  const _MiddayBanner({required this.flag});
+  final J flag;
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(color: const Color(0xFFEFF4FF), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFBFD3FE))),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Icon(Icons.wb_sunny_outlined, color: Color(0xFF1D4ED8)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${flag['title']}', style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF1E3A8A), fontSize: 14.5)),
+              const SizedBox(height: 2),
+              Text('${flag['detail']}', style: const TextStyle(color: Color(0xFF1E3A8A), fontSize: 13.5, height: 1.4)),
+              const SizedBox(height: 4),
+              Text('Source: ${flag['authority']}', style: const TextStyle(color: Color(0xFF3B5BA9), fontSize: 12)),
+            ]),
+          ),
+        ]),
+      );
 }

@@ -8,7 +8,7 @@ import '../../services/api_client.dart';
 import '../../widgets/common.dart';
 import '../reports/reports_page.dart';
 
-const _site = 'ws_kumasi_tower';
+const _site = 'ws_saadiyat_tower';
 const _crew = 'crew_concrete_a';
 const _json = {'worksite_id': _site};
 
@@ -80,7 +80,7 @@ String? _openHeatAlert(AppState s) {
 final demoSteps = <DemoStep>[
   DemoStep(
     'Prepare a clean demo',
-    'Resets the simulation, clears history and builds 30 minutes of simulated readings at the Adum Tower construction site.',
+    'Resets the simulation, clears history and builds 30 minutes of simulated readings at the Saadiyat Island tower site.',
     'Prepare',
     (ctx, api, nav) async {
       await api.post('/simulation/reset', {'clear_history': true});
@@ -94,8 +94,8 @@ final demoSteps = <DemoStep>[
   ),
   DemoStep(
     'Introduce the site',
-    '"This is a simulated construction site in Kumasi with one virtual heat-stress station. Everything you see is labelled as simulated, '
-        'and every number comes from the backend."',
+    '"This is a simulated construction site on Saadiyat Island, Abu Dhabi, with one virtual heat-stress station. '
+        'It is a November morning, the cool season. Everything is labelled as simulated, and every number comes from the backend."',
     'Show overview',
     (ctx, api, nav) async => nav.go(Nav.overview),
   ),
@@ -192,6 +192,17 @@ final demoSteps = <DemoStep>[
     (ctx, api, nav) async {
       await api.post('/simulation/sensor-restore', _json);
       await _steps(api, 1);
+    },
+  ),
+  DemoStep(
+    'UAE midday break',
+    '"Summer in Abu Dhabi: we jump to 12:35 on a July day. Besides the heat-stress level, HeatGuard checks the UAE midday break: '
+        'outdoor work in direct sun is not permitted from 12:30 to 15:00, 15 June to 15 September. It raises a separate compliance alert."',
+    'Jump to 12:35 in July',
+    (ctx, api, nav) async {
+      await api.post('/simulation/scenario', {'worksite_id': _site, 'scenario_id': 'increasing_heat'});
+      await api.post('/simulation/jump', {'worksite_id': _site, 'sim_clock': '12:35'});
+      nav.go(Nav.alerts);
     },
   ),
   DemoStep(

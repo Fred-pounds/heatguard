@@ -18,8 +18,10 @@ Worker protection takes priority over productivity optimisation.
 ## Before any field deployment
 
 1. Replace demo roles with Firebase Authentication custom claims (`role`, `crew_id`) and deploy the rules.
-2. Run a data-protection impact assessment. Ghana's Data Protection Act, 2012 (Act 843) applies to personal data.
-3. Have Twi and other language translations of the worker messages produced and reviewed by qualified
-   native speakers. The translation slots are deliberately empty.
+2. Run a data-protection impact assessment. In the UAE, personal data are governed by Federal Decree-Law No. 45 of 2021 on
+   the Protection of Personal Data (PDPL), or by the applicable free-zone regime (for example ADGM in Abu Dhabi).
+3. Have the worker messages translated into the languages of the workforce (for example Arabic, Urdu, Hindi,
+   Malayalam, Bengali and Tagalog) and reviewed by qualified native speakers. The translation slots are
+   deliberately empty.
 4. Agree in writing with worker representatives that the data cannot be used for discipline.
 5. Validate instruments, thresholds and workflows in the field with OHS professionals.

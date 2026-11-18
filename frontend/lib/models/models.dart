@@ -37,6 +37,7 @@ extension type Reading(J j) {
   String get timestamp => j['timestamp'];
   String? get receivedAt => j['received_at'];
   String? get simClock => j['sim_clock'];
+  String? get simDate => j['sim_date'];
   int? get simMinute => (j['sim_minute'] as num?)?.toInt();
   double? get tdb => jNum(j['dry_bulb']);
   double? get tnwb => jNum(j['natural_wet_bulb']);
@@ -76,6 +77,8 @@ extension type Assessment(J j) {
   String get reference => j['guideline_reference'] ?? '';
   List<String> get limitations => (j['limitations'] as List? ?? []).cast<String>();
   String get origin => j['data_origin'] ?? 'SIMULATED';
+  List<J> get regulatoryFlags => jList(j['regulatory_flags']);
+  bool get middayBreak => regulatoryFlags.isNotEmpty;
   Crew? get crew => j['crew'] == null ? null : Crew(jMap(j['crew']));
 }
 

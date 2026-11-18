@@ -8,7 +8,7 @@ HTTP ingest endpoint a future ESP32 station would use:
 
 Usage (backend running with in-process simulation disabled):
     HEATGUARD_SIM_AUTOSTART=false uvicorn app.main:app --port 8000      # in backend/
-    python simulator/simulator.py --worksite ws_kumasi_tower --scenario increasing_heat --interval 3
+    python simulator/simulator.py --worksite ws_saadiyat_tower --scenario increasing_heat --interval 3
 
 Readings that cannot be delivered (backend down / network failure) are kept
 in the station's edge buffer and re-sent, flagged late_sync, on recovery.
@@ -41,7 +41,7 @@ def post(url: str, payload: list[dict], key: str | None) -> None:
 def main() -> int:
     p = argparse.ArgumentParser(description="HeatGuard standalone virtual station (SIMULATED)")
     p.add_argument("--api", default="http://localhost:8000/api")
-    p.add_argument("--worksite", default="ws_kumasi_tower")
+    p.add_argument("--worksite", default="ws_saadiyat_tower")
     p.add_argument("--scenario", default="increasing_heat", choices=sorted(SCENARIOS))
     p.add_argument("--interval", type=float, default=3.0, help="seconds between readings (1 reading = 1 simulated minute)")
     p.add_argument("--minutes", type=int, default=0, help="stop after N simulated minutes (0 = run forever)")

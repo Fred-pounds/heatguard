@@ -23,7 +23,7 @@ Key endpoints:
 | Assessments | `GET /api/assessments/latest`, `GET /api/assessments/history`, `GET /api/assessments/{crew_id}` |
 | Alerts | `GET /api/alerts?status=active`, `POST /api/alerts/{id}/acknowledge`, `POST /api/alerts/{id}/resolve` |
 | Interventions | `GET/POST /api/interventions`, `POST /api/interventions/{id}/complete` |
-| Simulation | `POST /api/simulation/{start,pause,resume,stop,step,reset,scenario,speed,adjust,override,sensor-failure,sensor-restore,network-failure,network-restore,database-outage}` |
+| Simulation | `POST /api/simulation/{start,pause,resume,stop,step,jump,reset,scenario,speed,adjust,override,sensor-failure,sensor-restore,network-failure,network-restore,database-outage}` |
 | Reports | `GET /api/reports/summary`, `GET /api/reports/export?kind=summary|readings|assessments|alerts|interventions|evaluation`, `POST /api/evaluation/run` |
 | Worker | `GET /api/worker/crews`, `GET /api/worker/{crew_id}` |
 

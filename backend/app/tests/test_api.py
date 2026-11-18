@@ -17,7 +17,7 @@ def test_api_smoke():
         assert c.get("/api/assessments/latest").json()
         r = c.put(f"/api/crews/{crews[0]['crew_id']}", json={"acclimatization": "not_acclimatized"})
         assert r.status_code == 200 and r.json()["assessment"]["inputs_used"]["acclimatization"] == "not_acclimatized"
-        assert c.post("/api/simulation/override", json={"worksite_id": "ws_kumasi_tower", "natural_wet_bulb": 80}).status_code == 422
+        assert c.post("/api/simulation/override", json={"worksite_id": "ws_saadiyat_tower", "natural_wet_bulb": 80}).status_code == 422
         assert c.put(f"/api/crews/{crews[0]['crew_id']}", json={"acclimatization": "x"}).status_code == 422
         # worker role cannot change crews
         assert c.put(f"/api/crews/{crews[0]['crew_id']}", json={"worker_count": 3},

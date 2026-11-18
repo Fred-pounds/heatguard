@@ -85,7 +85,7 @@ class _SimulationLabPageState extends State<SimulationLabPage> {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         child: Wrap(spacing: 16, runSpacing: 12, crossAxisAlignment: WrapCrossAlignment.center, children: [
           StatusDot(state == 'running' ? 'running' : (state == 'paused' ? 'paused' : 'offline'), label: humanize(state)),
-          Text('Site time ${st['sim_clock'] ?? '-'}', style: t.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+          Text(siteTime(st['sim_clock'] as String?, date: st['sim_date'] as String?), style: t.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
           Text('${ws.name} · ${humanize('${st['scenario_id'] ?? ''}')}', style: t.bodySmall),
           const SizedBox(width: 8),
           if (state == 'running')

@@ -27,6 +27,7 @@ from .alert_engine import AlertEngine
 from .data_validation import validate_reading
 from .guideline import load_guideline
 from .intervention_service import InterventionService
+from .regulatory import load_midday_break
 from .risk_engine import AssessmentContext, RiskEngine
 from .simulation_service import SimulationService
 from .wbgt_calculator import MissingComponentError, compute_wbgt
@@ -34,6 +35,7 @@ from .wbgt_calculator import MissingComponentError, compute_wbgt
 log = logging.getLogger("heatguard.service")
 
 HISTORY_EVERY_N = 5  # persist an assessment to history at least every N readings per crew
+DEMO_SEED_VERSION = "abu-dhabi-1"  # bump when the demo worksites/crews change
 
 
 class NullBackend(PersistenceBackend):
@@ -75,7 +77,7 @@ class HeatGuardService:
         self.backend = backend or build_backend(settings)
         self.repo = HeatGuardRepository(self.backend, settings.retention_readings_per_site, settings.retention_assessments)
         self.guideline = load_guideline(settings.guideline_id)
-        self.engine = RiskEngine(self.guideline)
+        self.engine = RiskEngine(self.guideline, load_midday_break() if settings.uae_midday_break else None)
         self.alerts = AlertEngine(self.repo, settings.sustained_improvement_readings, settings.escalate_after_seconds)
         self.interventions = InterventionService(self.repo)
         self.sim = SimulationService(settings.tick_seconds, settings.simulation_seed)
@@ -90,8 +92,12 @@ class HeatGuardService:
     # ================================================================== setup
     def initialise(self) -> None:
         self.repo.load()
+        if self.settings.seed_demo_data and self.repo.worksites and self.repo.meta.get("seed_version") != DEMO_SEED_VERSION:
+            log.warning("Stored demo data is from an older demo version; replacing it with the current demo seed")
+            self.repo.reset_all()
         if not self.repo.worksites and self.settings.seed_demo_data:
             self.seed_demo()
+            self.repo.set_meta({"seed_version": DEMO_SEED_VERSION})
         for ws in self.repo.worksites.values():
             scenario = (self.repo.simulation.get("stations", {}).get(ws["worksite_id"], {}) or {}).get("scenario_id")
             default = "industrial_indoor" if ws["environment"] == "indoor" else "normal"
@@ -109,22 +115,22 @@ class HeatGuardService:
         """Create the demo worksites and crews (SIMULATED operational context, no personal data)."""
         ts = now_iso()
         sites = [
-            Worksite(worksite_id="ws_kumasi_tower", name="Adum Tower Construction Site", location="Kumasi, Ashanti (demo)",
-                     environment="outdoor", industry="construction", station_id="vstation-ws_kumasi_tower",
+            Worksite(worksite_id="ws_saadiyat_tower", name="Saadiyat Island Tower Site", location="Saadiyat Island, Abu Dhabi (demo)",
+                     environment="outdoor", industry="construction", station_id="vstation-ws_saadiyat_tower",
                      zones=["Level 4 deck", "Ground works", "Scaffolding east", "Materials yard"], created_at=ts),
-            Worksite(worksite_id="ws_tema_plant", name="Tema Metal Processing Plant - Hall 2", location="Tema, Greater Accra (demo)",
-                     environment="indoor", industry="manufacturing", station_id="vstation-ws_tema_plant",
+            Worksite(worksite_id="ws_kezad_plant", name="KEZAD Metal Processing Hall", location="Khalifa Economic Zones (KEZAD), Abu Dhabi (demo)",
+                     environment="indoor", industry="manufacturing", station_id="vstation-ws_kezad_plant",
                      zones=["Furnace bay", "Casting line"], created_at=ts),
         ]
         for s in sites:
             self.repo.save_worksite(s.model_dump())
         crews = [
-            ("crew_concrete_a", "Concrete Crew A", "ws_kumasi_tower", "Level 4 deck", 8, "heavy", "long_sleeved_protective", "acclimatized", "Pouring and finishing level-4 slab"),
-            ("crew_rebar_b", "Rebar Crew B", "ws_kumasi_tower", "Ground works", 6, "moderate", "standard_work_clothing", "not_acclimatized", "Tying rebar for pile caps"),
-            ("crew_scaffold_c", "Scaffolding Crew C", "ws_kumasi_tower", "Scaffolding east", 5, "moderate", "standard_work_clothing", "unknown", "Erecting east-face scaffolding"),
-            ("crew_logistics", "Site Logistics", "ws_kumasi_tower", "Materials yard", 4, "light", "standard_work_clothing", "acclimatized", "Receiving and checking deliveries"),
-            ("crew_furnace", "Furnace Team", "ws_tema_plant", "Furnace bay", 6, "heavy", "cloth_coveralls", "acclimatized", "Charging and tapping furnace"),
-            ("crew_casting", "Casting Line Crew", "ws_tema_plant", "Casting line", 7, "moderate", "sms_polypropylene_coveralls", "acclimatized", "Mould handling and fettling"),
+            ("crew_concrete_a", "Concrete Crew A", "ws_saadiyat_tower", "Level 4 deck", 8, "heavy", "long_sleeved_protective", "acclimatized", "Pouring and finishing level-4 slab"),
+            ("crew_rebar_b", "Rebar Crew B", "ws_saadiyat_tower", "Ground works", 6, "moderate", "standard_work_clothing", "not_acclimatized", "Tying rebar for pile caps"),
+            ("crew_scaffold_c", "Scaffolding Crew C", "ws_saadiyat_tower", "Scaffolding east", 5, "moderate", "standard_work_clothing", "unknown", "Erecting east-face scaffolding"),
+            ("crew_logistics", "Site Logistics", "ws_saadiyat_tower", "Materials yard", 4, "light", "standard_work_clothing", "acclimatized", "Receiving and checking deliveries"),
+            ("crew_furnace", "Furnace Team", "ws_kezad_plant", "Furnace bay", 6, "heavy", "cloth_coveralls", "acclimatized", "Charging and tapping furnace"),
+            ("crew_casting", "Casting Line Crew", "ws_kezad_plant", "Casting line", 7, "moderate", "sms_polypropylene_coveralls", "acclimatized", "Mould handling and fettling"),
         ]
         for cid, name, ws, zone, n, wl, cl, ac, task in crews:
             self.repo.save_crew(Crew(crew_id=cid, name=name, worksite_id=ws, zone=zone, worker_count=n, workload=wl, clothing=cl,

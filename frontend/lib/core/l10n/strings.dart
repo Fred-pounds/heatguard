@@ -1,11 +1,21 @@
-/// Worker-facing strings. Architecture for future Twi / other Ghanaian languages:
-/// add a map per language code. Missing keys fall back to English.
+/// Worker-facing strings. English is the working language; the architecture supports
+/// the languages most spoken by the UAE construction and industrial workforce
+/// (Arabic, Urdu, Hindi, Malayalam, Bengali, Tagalog): add a map per language code.
+/// Missing keys fall back to English.
 ///
-/// IMPORTANT: Twi ('tw') entries are intentionally left empty. Safety messages
+/// IMPORTANT: non-English entries are intentionally left empty. Safety messages
 /// must be translated and reviewed by qualified native speakers and tested with
 /// workers before use; machine or ad-hoc translations are not acceptable here.
 class L10n {
-  static const supported = {'en': 'English', 'tw': 'Twi (translation pending review)'};
+  static const supported = {
+    'en': 'English',
+    'ar': 'Arabic (pending review)',
+    'ur': 'Urdu (pending review)',
+    'hi': 'Hindi (pending review)',
+    'ml': 'Malayalam (pending review)',
+    'bn': 'Bengali (pending review)',
+    'tl': 'Tagalog (pending review)',
+  };
 
   static const Map<String, Map<String, String>> _strings = {
     'en': {
@@ -32,8 +42,14 @@ class L10n {
       'privacy': 'This screen shows crew-level heat information only. It does not track you.',
       'simulated': 'SIMULATED DATA - demonstration only',
       'offline': 'Cannot reach HeatGuard. Information shown may be out of date - do not assume it is safe.',
+      'midday_break': 'Midday break: no outdoor work in direct sun from 12:30 to 15:00. Rest in shade or work indoors.',
     },
-    'tw': {},
+    'ar': {},
+    'ur': {},
+    'hi': {},
+    'ml': {},
+    'bn': {},
+    'tl': {},
   };
 
   final String lang;

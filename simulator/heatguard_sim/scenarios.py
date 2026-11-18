@@ -36,17 +36,18 @@ class Scenario:
     name: str
     description: str
     indoor: bool
-    start_clock: str  # simulated local time-of-day at minute 0, HH:MM
+    start_clock: str  # simulated local time-of-day at minute 0, HH:MM (Gulf Standard Time)
     duration_min: int
     profile: Callable[[float], Drivers]
     suggested_context: dict = field(default_factory=dict)
     faults: tuple[FaultEvent, ...] = ()
     network_outages: tuple[tuple[int, int], ...] = ()  # (start_min, end_min)
     noise_sd: float = 0.15  # degC sensor noise (synthetic)
+    sim_date: str = "2026-07-15"  # simulated calendar date (ISO), used for seasonal rules such as the UAE midday break
 
 
 def _normal(t: float) -> Drivers:
-    # Early-morning, partly cloudy, moderate heat; gentle drift.
+    # Abu Dhabi cool season (November), coastal morning: humid, mild sun, sea breeze.
     frac = t / 240.0
     return Drivers(
         tdb=_lerp(25.5, 28.0, frac) + 0.3 * math.sin(t / 17.0),
@@ -57,45 +58,59 @@ def _normal(t: float) -> Drivers:
 
 
 def _increasing(t: float) -> Drivers:
-    # Morning-to-midday build-up: temperature and solar load rise, wind drops.
-    frac = t / 180.0
+    # Abu Dhabi summer (July) day building from early morning towards midday: temperature and sun rise,
+    # humidity falls as the land heats, the morning breeze drops.
+    frac = t / 360.0
     return Drivers(
-        tdb=_lerp(27.0, 36.5, frac) + 0.2 * math.sin(t / 13.0),
-        rh=_lerp(68.0, 46.0, frac),
-        solar=_lerp(250.0, 920.0, frac),
-        wind=_lerp(2.0, 0.8, frac),
+        tdb=_lerp(30.0, 43.0, frac) + 0.2 * math.sin(t / 13.0),
+        rh=_lerp(55.0, 30.0, frac),
+        solar=_lerp(250.0, 980.0, frac),
+        wind=_lerp(3.5, 1.4, frac),
     )
 
 
 def _construction(t: float) -> Drivers:
-    # Exposed concrete deck around solar noon: high radiant load, low air movement.
+    # Summer afternoon on an exposed deck after the midday break: very hot, dry air, strong sun easing.
+    frac = t / 180.0
     return Drivers(
-        tdb=32.3 + 0.7 * math.sin(t / 30.0),
-        rh=49.0 + 3.0 * math.sin(t / 23.0),
-        solar=910.0 + 40.0 * math.sin(t / 7.0),
-        wind=0.85 + 0.2 * math.sin(t / 5.0),
+        tdb=_lerp(42.0, 39.0, frac) + 0.5 * math.sin(t / 30.0),
+        rh=_lerp(25.0, 35.0, frac) + 2.0 * math.sin(t / 23.0),
+        solar=_lerp(800.0, 450.0, frac) + 30.0 * math.sin(t / 7.0),
+        wind=1.6 + 0.3 * math.sin(t / 5.0),
     )
 
 
 def _industrial(t: float) -> Drivers:
-    # Indoor foundry / processing hall: radiant sources, poor ventilation.
+    # Indoor metal-processing hall in August: partial cooling only, furnace radiant heat.
     return Drivers(
-        tdb=30.6 + 0.6 * math.sin(t / 25.0),
-        rh=50.0 + 2.0 * math.sin(t / 19.0),
+        tdb=33.5 + 0.6 * math.sin(t / 25.0),
+        rh=42.0 + 2.0 * math.sin(t / 19.0),
         solar=0.0,
-        wind=0.4,
-        radiant_excess=9.0 + 1.5 * math.sin(t / 15.0),
+        wind=0.5,
+        radiant_excess=6.5 + 1.0 * math.sin(t / 15.0),
     )
 
 
 def _sensor_failure(t: float) -> Drivers:
-    # Warm late-morning conditions; faults are scheduled separately.
+    # Late-September morning; faults are scheduled separately.
     frac = t / 120.0
     return Drivers(
-        tdb=_lerp(29.0, 32.0, frac),
-        rh=_lerp(62.0, 55.0, frac),
-        solar=_lerp(500.0, 750.0, frac),
-        wind=1.4,
+        tdb=_lerp(31.0, 34.0, frac),
+        rh=_lerp(60.0, 50.0, frac),
+        solar=_lerp(450.0, 750.0, frac),
+        wind=1.6,
+    )
+
+
+def _humid_coastal(t: float) -> Drivers:
+    # Gulf-coast summer morning (August): very high humidity limits sweat evaporation,
+    # so heat stress is high even before peak air temperature.
+    frac = t / 180.0
+    return Drivers(
+        tdb=_lerp(33.0, 37.0, frac) + 0.2 * math.sin(t / 11.0),
+        rh=_lerp(82.0, 62.0, frac),
+        solar=_lerp(300.0, 750.0, frac),
+        wind=_lerp(1.2, 1.6, frac),
     )
 
 
@@ -105,11 +120,12 @@ SCENARIOS: dict[str, Scenario] = {
         Scenario(
             id="normal",
             code="A",
-            name="Normal working conditions",
-            description="Moderate environmental heat in the early morning, light cloud and steady breeze. "
+            name="Cool-season morning",
+            description="Abu Dhabi in November: mild, humid coastal morning with a sea breeze. "
             "Light-to-moderate work by acclimatized crews.",
             indoor=False,
             start_clock="07:00",
+            sim_date="2026-11-12",
             duration_min=240,
             profile=_normal,
             suggested_context={"workload": "light", "acclimatization": "acclimatized", "clothing": "standard_work_clothing"},
@@ -117,33 +133,50 @@ SCENARIOS: dict[str, Scenario] = {
         Scenario(
             id="increasing_heat",
             code="B",
-            name="Increasing environmental heat",
-            description="Air temperature, solar load and radiant heat rise steadily toward midday while air movement falls. "
-            "The system should recognise worsening conditions early.",
+            name="Summer day heating up",
+            description="A July day from 07:00 towards midday: air temperature climbs to 43 °C and the sun strengthens. "
+            "Crosses into the UAE midday break at 12:30.",
             indoor=False,
-            start_clock="09:00",
-            duration_min=180,
+            start_clock="07:00",
+            sim_date="2026-07-15",
+            duration_min=360,
             profile=_increasing,
             suggested_context={"workload": "moderate", "acclimatization": "acclimatized", "clothing": "standard_work_clothing"},
         ),
         Scenario(
             id="construction_radiant",
             code="C",
-            name="High-radiant-heat construction site",
-            description="Outdoor concrete deck with direct sun, elevated globe temperature and low wind. Moderate to heavy work.",
+            name="Summer afternoon on site",
+            description="Exposed concrete deck after the midday break (15:00, July): 40+ °C, dry air, strong sun. "
+            "Moderate to heavy work.",
             indoor=False,
-            start_clock="12:00",
+            start_clock="15:00",
+            sim_date="2026-07-15",
             duration_min=180,
             profile=_construction,
             suggested_context={"workload": "heavy", "acclimatization": "acclimatized", "clothing": "long_sleeved_protective"},
         ),
         Scenario(
+            id="humid_coastal",
+            code="F",
+            name="Humid coastal morning",
+            description="August morning on the Gulf coast: humidity above 80 % stops sweat from cooling the body, "
+            "so heat stress is high even before the hottest hours.",
+            indoor=False,
+            start_clock="07:00",
+            sim_date="2026-08-10",
+            duration_min=180,
+            profile=_humid_coastal,
+            suggested_context={"workload": "moderate", "acclimatization": "acclimatized", "clothing": "standard_work_clothing"},
+        ),
+        Scenario(
             id="industrial_indoor",
             code="D",
             name="Industrial work environment",
-            description="Indoor processing hall with furnace radiant heat, limited ventilation and heavy work.",
+            description="Indoor metal-processing hall in August with partial cooling, furnace radiant heat and heavy work.",
             indoor=True,
             start_clock="10:00",
+            sim_date="2026-08-10",
             duration_min=240,
             profile=_industrial,
             suggested_context={"workload": "heavy", "acclimatization": "acclimatized", "clothing": "cloth_coveralls"},
@@ -152,10 +185,11 @@ SCENARIOS: dict[str, Scenario] = {
             id="sensor_failure",
             code="E",
             name="Sensor failure",
-            description="Warm conditions with scheduled faults: globe sensor drop-out, invalid wet-bulb values, "
+            description="Warm September morning with scheduled faults: globe sensor drop-out, invalid wet-bulb values, "
             "full station outage, then recovery. Missing data must never be classified as safe.",
             indoor=False,
-            start_clock="10:30",
+            start_clock="08:30",
+            sim_date="2026-09-25",
             duration_min=120,
             profile=_sensor_failure,
             suggested_context={"workload": "moderate", "acclimatization": "acclimatized", "clothing": "standard_work_clothing"},

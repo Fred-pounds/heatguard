@@ -24,6 +24,7 @@ class SensorReadingIn(BaseModel):
     data_origin: Literal["SIMULATED", "MEASURED"] = "SIMULATED"
     sim_minute: int | None = None
     sim_clock: str | None = None
+    sim_date: str | None = Field(default=None, description="Site-local calendar date (YYYY-MM-DD)")
     scenario_id: str | None = None
     run_id: str | None = None
     late_sync: bool = False

@@ -11,18 +11,29 @@
 
 ## The problem
 
-Outdoor and industrial workers in hot climates, on construction sites, farms, ports and factories, face heat
-stress every day. Supervisors usually see a temperature at best. That doesn't tell them whether a *specific crew*,
-doing *specific work* in *specific clothing*, is still within safe limits, or what to do about it.
+In Abu Dhabi, summer air temperatures pass 45 °C and coastal humidity can stay high even in the early morning.
+Construction, logistics, oil and gas and industrial crews work outdoors or in hot halls through these conditions.
+Supervisors usually see a temperature at best. That doesn't tell them whether a *specific crew*, doing
+*specific work* in *specific clothing*, is still within safe limits, whether the UAE midday break applies right
+now, or what to do about it.
 
 ## What HeatGuard does
 
 1. **Measures** heat stress as WBGT, the standard occupational heat index (here from a simulated station).
 2. **Assesses each crew** against documented NIOSH limits, taking workload, clothing and acclimatization into account.
-3. **Explains** every result in plain language: why, what to do, and what data were used or missing.
-4. **Alerts and tracks action:** acknowledgement, protective interventions, follow-up reassessment.
-5. **Never fakes safety:** missing, invalid or stale data is shown as "assessment unavailable", never as green.
+3. **Checks UAE rules:** flags the MoHRE summer midday break (no outdoor work in direct sun 12:30–15:00,
+   15 June–15 September) as a separate compliance alert, in Gulf Standard Time.
+4. **Explains** every result in plain language: why, what to do, and what data were used or missing.
+5. **Alerts and tracks action:** acknowledgement, protective interventions, follow-up reassessment.
+6. **Never fakes safety:** missing, invalid or stale data is shown as "assessment unavailable", never as green.
 
+Demo sites (simulated): **Saadiyat Island Tower Site** (outdoor construction) and **KEZAD Metal Processing Hall**
+(indoor). The scenarios use Abu Dhabi climate: cool-season mornings, July build-up to midday, humid Gulf-coast
+mornings and summer afternoons on site.
+
+| UAE midday break | Explained assessment |
+|---|---|
+| ![Midday break alert](docs/screenshots/midday-break.png) | ![Crew assessment](docs/screenshots/assessment.png) |
 | Explained assessment and guided demo | Intervention tracking |
 |---|---|
 | ![Demo guide](docs/screenshots/demo-guide.png) | ![Intervention](docs/screenshots/intervention.png) |
@@ -51,7 +62,7 @@ doing *specific work* in *specific clothing*, is still within safe limits, or wh
 | **Dashboard** | Flutter Web (Material 3, Provider, fl_chart): Overview, Live Monitoring, Crew Management, Alerts, Interventions, **Simulation Lab**, Reports (with evaluation and CSV), Settings (methodology and governance) |
 | **Worker view** | Mobile-friendly, crew-only, plain language, ready for translations |
 | **Persistence** | Firebase Realtime Database via a repository layer, or a local JSON store when no credentials are present; write-behind queue survives outages |
-| **Evaluation** | 8 repeatable synthetic cases compared with ground truth: lead time, false/missed alerts, false-safe minutes, completeness, stale detection, recovery |
+| **Evaluation** | 10 repeatable synthetic cases compared with ground truth: lead time, false/missed alerts, false-safe minutes, completeness, stale detection, recovery |
 
 ## Try it
 
@@ -177,7 +188,7 @@ cd backend && HEATGUARD_SIM_AUTOSTART=false uvicorn app.main:app --port 8000
 ```
 
 ```bash
-python simulator/simulator.py --worksite ws_kumasi_tower --scenario increasing_heat --interval 3
+python simulator/simulator.py --worksite ws_saadiyat_tower --scenario increasing_heat --interval 3
 ```
 
 ## Project structure
@@ -221,7 +232,7 @@ heatguard/
 * NIOSH RAL/REL apply to healthy workers. Metabolic rates are category estimates, and screening is a
   conservative approximation of a 1-hour TWA.
 * The simulator's physics is a consistency heuristic, not a validated thermal model.
-* The demo role header is not authentication. Translations (e.g. Twi) need qualified native-speaker review
+* The demo role header is not authentication. Translations (e.g. Arabic, Urdu, Hindi, Malayalam) need qualified native-speaker review
   before use.
 * Not a medical device. It does not diagnose, predict illness or clear workers to resume work.
 
@@ -234,5 +245,6 @@ heatguard/
 - [x] Structured, explained assessments; missing data → incomplete; sensor and network failure handled safely
 - [x] Alerts generated, acknowledged, escalated, resolved with notes; interventions recorded with follow-up
 - [x] Live dashboard, trends, interactive Simulation Lab, reports, CSV export, SIMULATED labelling
-- [x] Methodology documentation; backend, frontend and Firebase-emulator tests in CI; evaluation suite (8 cases / 22 checks passing)
+- [x] Methodology documentation; backend, frontend and Firebase-emulator tests in CI; evaluation suite (10 cases / 27 checks passing)
 - [x] Guided in-app demo mode; Docker image and Render blueprint for a hosted link
+- [x] Abu Dhabi localization: UAE climate scenarios, MoHRE midday-break compliance rule, GST site time, 998 ambulance, UAE PDPL

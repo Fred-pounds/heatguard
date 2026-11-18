@@ -29,23 +29,32 @@
 Operational metrics (acknowledgement time, intervention completion rate, sensor availability, missing-data
 frequency, connectivity recovery time, unresolved alerts) are computed live in **Reports** from stored data.
 
-## Results (seeded run, 8 cases, 22 checks, all passed)
+## Results (seeded run, 10 cases, 27 checks, all passed)
+
+Scenarios use Abu Dhabi climate profiles: a cool-season November morning, a July day heating up past the
+midday break, a summer afternoon on site, a humid Gulf-coast August morning, an indoor metal-processing hall
+and a sensor-failure morning.
 
 | Case | Scenario | Ref. peak | System peak | Lead (min) | False alarm | Missed | False-safe min | Completeness | Checks |
 |---|---|---|---|---|---|---|---|---|---|
 | Normal conditions - light work, acclimatized | normal | routine | routine | – | 0% | 0% | 0 | 100% | 2/2 |
-| Increasing heat - moderate work, acclimatized | increasing_heat | critical | critical | 24 | 0% | 0% | 0 | 100% | 3/3 |
+| Increasing heat - moderate work, acclimatized | increasing_heat | critical | critical | 31 | 0% | 0% | 0 | 100% | 3/3 |
 | Heavy workload - high-radiant construction site | construction_radiant | critical | critical | 0 | 0% | 0% | 0 | 100% | 2/2 |
-| Increasing heat - unacclimatized crew | increasing_heat | critical | critical | 10 | 0% | 0% | 0 | 100% | 3/3 |
+| Increasing heat - unacclimatized crew | increasing_heat | critical | critical | 0 | 0% | 0% | 0 | 100% | 3/3 |
 | Missing data - unknown workload | normal | unavailable | unavailable | – | 0% | 0% | 0 | 0% | 2/2 |
-| Sensor failure - scheduled probe faults | sensor_failure | high | high | 47 | 0% | 0% | 0 | 62% | 4/4 |
-| Network failure - 20 min uplink outage during rising heat | increasing_heat | critical | critical | 24 | 0% | 0% | 0 | 92% | 4/4 |
+| Sensor failure - scheduled probe faults | sensor_failure | high | high | 16 | 0% | 0% | 0 | 62% | 4/4 |
+| Network failure - 20 min uplink outage during rising heat | increasing_heat | critical | critical | 31 | 0% | 0% | 0 | 96% | 4/4 |
+| Humid coastal morning - moderate work | humid_coastal | critical | critical | 0 | 0% | 0% | 0 | 100% | 2/2 |
+| UAE midday break - outdoor work at 12:30 | increasing_heat | critical | critical | 31 | 0% | 0% | 0 | 100% | 3/3 |
 | Industrial indoor - heavy work in coveralls | industrial_indoor | high | high | 0 | 0% | 0% | 0 | 100% | 2/2 |
 
 Network-failure case: the outage was detected as stale data after 18 s, a valid assessment returned 3 s after
-the uplink was restored, and all 20 queued readings were back-filled. In the same rising-heat scenario the unacclimatized crew was alerted
-at minute 0 (conditions were already within the caution margin of the lower RAL), while the acclimatized crew
-was alerted at minute 57, 24 minutes before its REL was exceeded at minute 81. This difference comes from RAL < REL.
+the uplink was restored, and all 20 queued readings were back-filled. In the same July scenario the
+unacclimatized crew was alerted from minute 0 (07:00 already exceeds the lower RAL), while the acclimatized crew
+was alerted at minute 57, 31 minutes before its REL was exceeded at minute 88.
+
+UAE midday-break case: the compliance flag first appears at exactly 12:30 site time, never before, and raises
+one site-level "Midday break" alert.
 
 ### Interpreting these numbers honestly
 
@@ -58,7 +67,7 @@ was alerted at minute 57, 24 minutes before its REL was exceeded at minute 81. T
 
 ## Unit tests
 
-`cd backend && python -m pytest app/tests -q` runs 33 tests (plus a Firebase-emulator integration test when the emulator is running) covering WBGT formulas and formula selection,
+`cd backend && python -m pytest app/tests -q` runs 35 tests (plus a Firebase-emulator integration test when the emulator is running) covering WBGT formulas and formula selection,
 the NIOSH equations, category boundaries, work/rest effects, RAL for unknown acclimatization, clothing
 adjustment, rolling-mean retention, missing, invalid, implausible and stale data, incomplete context, duplicate
 suppression, no auto-clear, resolution rules, site-level data alerts, intervention reassessment, edge

@@ -1,6 +1,6 @@
 # Five-minute demonstration
 
-The easiest way to present is the built-in **Demo guide** (button in the top bar). It lists the 13 steps below,
+The easiest way to present is the built-in **Demo guide** (button in the top bar). It lists the 14 steps below,
 shows a talk track for each one, and its button performs the step and opens the right screen. You can also click
 through by hand; the steps work the same way.
 
@@ -11,7 +11,7 @@ through by hand; the steps work the same way.
 
 | # | Step | Guide button | What it shows |
 |---|---|---|---|
-| 1 | Prepare a clean demo | Prepare | Clean state, normal conditions at the Adum Tower construction site |
+| 1 | Prepare a clean demo | Prepare | Clean state, a November morning (cool season) at the Saadiyat Island tower site |
 | 2 | Introduce the site | Show overview | Plain status, crews needing attention, WBGT trend; everything labelled simulated |
 | 3 | Show live conditions | Open live monitoring | Air, wet-bulb and globe readings; WBGT outdoor formula |
 | 4 | Select a crew doing heavy work | Open Concrete Crew A | Assessment panel: status, gauge vs limit, plain explanation, numbered actions |
@@ -22,8 +22,9 @@ through by hand; the steps work the same way.
 | 9 | Record an intervention | Record rotation | 15/45 rotation and lighter tasks; immediate reassessment (High to Routine) |
 | 10 | Trigger a sensor failure | Break the globe sensor | "Assessment unavailable" (purple, never green), gap in the chart, data alert |
 | 11 | Restore the sensor | Restore | Assessments resume; the alert stays open for supervisor review |
-| 12 | Show the evaluation | Run evaluation | 8 synthetic cases, 22 checks, 0 "false safe" minutes, with the disclaimer |
-| 13 | Worker view | Open worker view | Crew-only, plain-language notice with water, rest and emergency guidance |
+| 12 | UAE midday break | Jump to 12:35 in July | Compliance flag and "Midday break" alert: no outdoor work in direct sun 12:30-15:00, 15 Jun-15 Sep |
+| 13 | Show the evaluation | Run evaluation | 10 synthetic cases (incl. humid coast and midday break), 27 checks, 0 "false safe" minutes |
+| 14 | Worker view | Open worker view | Crew-only, plain-language notice with water, rest and emergency guidance |
 
 **Back-up:** if the network is slow, every step still works offline on a laptop: the dashboard and fonts are
 bundled and no external APIs are used. In the **Simulation Lab**, **+1 min** advances time manually.
@@ -35,5 +36,8 @@ bundled and no external APIs are used. In the **Simulation Lab**, **+1 min** adv
 * *Is it machine learning?* No, by design. The rules are transparent and every output explains itself.
 * *What about real sensors?* `POST /api/sensors/ingest` takes readings from any station, such as an ESP32.
   `simulator/simulator.py` uses exactly that path.
+* *Is it adapted to the UAE?* Yes: Abu Dhabi climate scenarios (including humid coastal mornings), the MoHRE
+  midday break as a configurable compliance rule, Gulf Standard Time, the 998 ambulance number, and language
+  slots for the UAE workforce. The OSHAD-SF heat code thresholds are a configuration slot, pending verification.
 * *Is the data stored?* Yes: Firebase Realtime Database, verified against the official emulator, or a local JSON
   store in demo mode.

@@ -54,6 +54,11 @@ class ResetRequest(BaseModel):
     clear_history: bool = False
 
 
+class JumpRequest(BaseModel):
+    worksite_id: str
+    sim_clock: str = Field(pattern=r"^\d{2}:\d{2}$", description="Target site time (HH:MM) within the current scenario day")
+
+
 class ToggleRequest(BaseModel):
     enabled: bool
 
@@ -110,6 +115,21 @@ async def stop(svc: HeatGuardService = Depends(get_service)):
 async def step(svc: HeatGuardService = Depends(get_service)):
     """Advance every station by one simulated minute (works while paused)."""
     svc.process_batch(svc.sim.poll_all())
+    return _status(svc)
+
+
+@router.post("/jump", dependencies=guard)
+async def jump(body: JumpRequest, svc: HeatGuardService = Depends(get_service)):
+    """Move a station's simulated clock to a given site time (e.g. to show the 12:30 midday break) and take a reading."""
+    st = _station(svc, body.worksite_id)
+    sh, sm = (int(x) for x in st.scenario.start_clock.split(":"))
+    th, tm = (int(x) for x in body.sim_clock.split(":"))
+    target = (th * 60 + tm) - (sh * 60 + sm)
+    if not 0 <= target < st.scenario.duration_min:
+        raise HTTPException(422, f"{body.sim_clock} is outside this scenario ({st.scenario.start_clock} for {st.scenario.duration_min} min)")
+    st.sim_minute = target
+    svc.process_batch(svc.sim.poll_all())
+    svc._event("simulation_jump", body.worksite_id, f"Site clock moved to {body.sim_clock}")  # noqa: SLF001
     return _status(svc)
 
 

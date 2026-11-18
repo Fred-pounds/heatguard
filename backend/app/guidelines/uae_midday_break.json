@@ -1,0 +1,15 @@
+{
+  "id": "uae_midday_break",
+  "name": "UAE summer midday break",
+  "authority": "UAE Ministry of Human Resources and Emiratisation (MoHRE)",
+  "rule": "Work under direct sunlight and in open places is not permitted between 12:30 and 15:00 during the summer period.",
+  "applies_to": "Outdoor work in direct sunlight",
+  "period_start": "06-15",
+  "period_end": "09-15",
+  "window_start": "12:30",
+  "window_end": "15:00",
+  "exemptions": "Work that must technically continue without interruption may be exempt, provided the employer meets MoHRE conditions (for example shade, cooling, drinking water and first aid). Record approved exemptions per site.",
+  "verification_note": "The period and hours are set by an annual ministerial resolution and have been 15 June to 15 September, 12:30 to 15:00, in recent years. Verify the current year's resolution before relying on these dates.",
+  "enabled": true,
+  "timezone": "Asia/Dubai"
+}

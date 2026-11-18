@@ -151,7 +151,34 @@ controls (shielding, ventilation) for indoor radiant heat, clothing review, the 
 (≤ 20 % exposure on day 1 for new workers, +20 %/day), and escalating symptoms to qualified personnel.
 They come from the category plus the specific contributing factors, never from a single score.
 
-## 9. Limitations
+## 9. UAE context (Abu Dhabi deployment)
+
+**Midday break.** The UAE Ministry of Human Resources and Emiratisation (MoHRE) prohibits work under direct
+sunlight and in open places from **12:30 to 15:00** during the summer period. In recent years that period has been
+**15 June to 15 September**, set by an annual ministerial resolution. HeatGuard implements this as a separate,
+configurable rule (`backend/app/guidelines/uae_midday_break.json`):
+
+* It applies to **outdoor sites with direct solar load**. Indoor sites are not flagged.
+* The site date and time come from the simulator, or, for real readings, from the timestamp converted to
+  Gulf Standard Time (Asia/Dubai, UTC+4).
+* When in force, the assessment gains a `regulatory_flags` entry, an **urgent** first action ("Stop outdoor work in
+  direct sun") and a sentence in the explanation. One site-level "Midday break" alert is raised.
+* It **does not change the NIOSH risk category**. It is a legal working-time rule, not a heat-stress limit, so the
+  two are reported side by side.
+* Exempt work (work that must technically continue, under MoHRE conditions) is described in the action text.
+  Sites record their approved exemptions themselves.
+* Verify the current year's resolution before relying on the dates. They are configuration, not code.
+
+**Abu Dhabi OSH framework.** Sites regulated under the Abu Dhabi Occupational Safety and Health System
+Framework (OSHAD-SF) should also apply its code of practice for working in the heat. Its thresholds are not
+bundled here because they were not verified for this prototype. Add them as a guideline configuration file
+(same structure as `niosh_2016.json`) once confirmed against the current edition.
+
+**Climate.** Coastal humidity in Abu Dhabi often keeps the natural wet-bulb temperature high, which dominates
+WBGT (70 % weight). The *Humid coastal morning* scenario shows high heat stress at air temperatures of only
+33–37 °C.
+
+## 10. Limitations
 
 * RAL/REL apply to healthy workers. Individual susceptibility is not assessed.
 * Metabolic rates are category estimates.

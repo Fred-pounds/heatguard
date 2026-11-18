@@ -19,6 +19,7 @@ from ..schemas.common import new_id, now_iso
 from ..schemas.crew import Crew, Worksite
 from ..schemas.sensor import SensorReading
 from .guideline import CATEGORY_LEVELS, REGIME_CATEGORY, Guideline
+from .regulatory import MiddayBreak
 from .wbgt_calculator import MissingComponentError, compute_wbgt, uses_solar_formula
 
 CATEGORY_LABELS = {
@@ -54,8 +55,31 @@ class AssessmentContext:
 
 
 class RiskEngine:
-    def __init__(self, guideline: Guideline):
+    def __init__(self, guideline: Guideline, midday_break: MiddayBreak | None = None):
         self.g = guideline
+        self.midday = midday_break
+
+    # ------------------------------------------------------------------ regulation
+    def _regulatory_flags(self, site: Worksite, r: SensorReading | None, solar: bool) -> list[dict]:
+        """UAE midday break: outdoor work in direct sun is not permitted in the restricted window."""
+        if self.midday is None or r is None or site.environment != "outdoor" or not solar:
+            return []
+        date, clock = self.midday.site_date_time(r.sim_date, r.sim_clock, r.timestamp)
+        return [self.midday.flag()] if self.midday.in_force(date, clock) else []
+
+    def _apply_regulation(self, a: Assessment, flags: list[dict]) -> Assessment:
+        if not flags:
+            return a
+        f = flags[0]
+        end = self.midday.data["window_end"] if self.midday else "15:00"
+        a.regulatory_flags = flags
+        a.contributing_factors.insert(0, ContributingFactor(factor=f["title"], detail=f["detail"], direction="increases_concern"))
+        a.recommended_actions.insert(0, RecommendedAction(
+            action="Stop outdoor work in direct sun (midday break)",
+            detail=f"Move the crew to shade or indoor work until {end}. {f['exemptions']}",
+            priority="urgent", source=f["authority"]))
+        a.explanation += f" The UAE midday break is in force: outdoor work in direct sun is not permitted until {end}."
+        return a
 
     # ================================================================== public
     def assess(self, ctx: AssessmentContext) -> Assessment:
@@ -136,7 +160,8 @@ class RiskEngine:
             wbgt_val = None
             if r is not None and not stale and r.wbgt is not None and not env_missing:
                 wbgt_val = r.wbgt
-            return self._incomplete(ctx, status, dq, missing, env_missing, inputs_used, wbgt_val)
+            return self._apply_regulation(self._incomplete(ctx, status, dq, missing, env_missing, inputs_used, wbgt_val),
+                                          self._regulatory_flags(site, r, solar))
 
         # ------------------------------------------------ compute
         assert r is not None and metabolic is not None and caf is not None
@@ -203,7 +228,7 @@ class RiskEngine:
         explanation = self._explain(category, crew, details, solar, site)
         actions = self._recommend(category, crew, details, clothing, solar, site)
         inputs_used["wbgt_formula"] = wb.formula
-        return Assessment(
+        return self._apply_regulation(Assessment(
             assessment_id=new_id("asm"),
             timestamp=now_iso(),
             worksite_id=site.worksite_id,
@@ -230,7 +255,7 @@ class RiskEngine:
             guideline_reference=self.g.reference,
             limitations=self.g.data["limitations"],
             data_origin=r.data_origin,
-        )
+        ), self._regulatory_flags(site, r, solar))
 
     # ================================================================== helpers
     def _inputs_used(self, site, crew, r, metabolic, caf, solar) -> dict:

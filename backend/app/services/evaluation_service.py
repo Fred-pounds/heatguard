@@ -77,6 +77,14 @@ CASES = [
          {"workload": "moderate", "clothing": "standard_work_clothing", "acclimatization": "acclimatized"},
          "Outage detected as stale data (not safe); queued readings synchronised on recovery.",
          {"no_false_safe": True, "detect_stale": True, "backfill": 20}, network_outage=(60, 80)),
+    Case("humid_coastal", "Humid coastal morning - moderate work", "humid_coastal",
+         {"workload": "moderate", "clothing": "standard_work_clothing", "acclimatization": "acclimatized"},
+         "High humidity is recognised as high heat stress even though air temperature is only 33-37 degC.",
+         {"min_peak": "high", "max_missed_rate": 0.05}),
+    Case("uae_midday_break", "UAE midday break - outdoor work at 12:30", "increasing_heat",
+         {"workload": "light", "clothing": "standard_work_clothing", "acclimatization": "acclimatized"},
+         "The legal midday-break restriction is flagged from 12:30 in summer, and not before.",
+         {"midday_break_from": "12:30"}),
     Case("indoor_heavy", "Industrial indoor - heavy work in coveralls", "industrial_indoor",
          {"workload": "heavy", "clothing": "cloth_coveralls", "acclimatization": "acclimatized"},
          "Indoor WBGT formula used; heavy work classified above routine.",
@@ -93,6 +101,8 @@ class Trace:
     data_alert_open: list[bool] = field(default_factory=list)
     fault: list[bool] = field(default_factory=list)
     link_down: list[bool] = field(default_factory=list)
+    regulatory: list[bool] = field(default_factory=list)
+    clock: list[str] = field(default_factory=list)
     formula: str | None = None
 
 
@@ -171,6 +181,8 @@ def run_case(case: Case, base: Settings) -> dict:
         tr.data_alert_open.append(data_open is not None)
         tr.fault.append(fault)
         tr.link_down.append(down)
+        tr.regulatory.append(bool(a and a.get("regulatory_flags")))
+        tr.clock.append(station.sim_clock(m))
 
     n = len(tr.minute)
     exceed = [i for i in range(n) if tr.truth[i] >= 2]
@@ -255,6 +267,13 @@ def run_case(case: Case, base: Settings) -> dict:
                              recover_s is not None and recover_s <= 2 * SECONDS_PER_MIN))
     if "backfill" in e:
         checks.append(_check("Queued readings synchronised after outage", e["backfill"], backfilled, backfilled == e["backfill"]))
+    if e.get("midday_break_from"):
+        first = next((tr.clock[i] for i in range(n) if tr.regulatory[i]), None)
+        before = sum(1 for i in range(n) if tr.regulatory[i] and tr.clock[i] < e["midday_break_from"])
+        checks.append(_check("Midday break first flagged at (site time)", e["midday_break_from"], first, first == e["midday_break_from"]))
+        checks.append(_check("No midday-break flag before the window", 0, before, before == 0))
+        reg_alert = any(al["alert_type"] == "regulatory" for al in svc.repo.alerts.values())
+        checks.append(_check("Midday-break alert raised", True, reg_alert, reg_alert))
     if e.get("indoor_formula"):
         ok = bool(tr.formula and "0.3*Tg" in tr.formula)
         checks.append(_check("Indoor WBGT formula applied", "0.7*Tnwb + 0.3*Tg", tr.formula, ok))

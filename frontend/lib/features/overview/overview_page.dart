@@ -19,7 +19,7 @@ class OverviewPage extends StatelessWidget {
     final s = context.watch<AppState>();
     final nav = context.read<NavController>();
     final c = s.counts;
-    final attention = s.assessments.where((a) => Sev.of(a.category).needsAttention).toList()
+    final attention = s.assessments.where((a) => Sev.of(a.category).needsAttention || a.middayBreak).toList()
       ..sort((a, b) => _rank(b).compareTo(_rank(a)));
     final ok = s.assessments.length - attention.length;
     final ws = s.selectedWorksite;
@@ -128,7 +128,7 @@ class _StatusHero extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(40, 10, 4, 10),
                   child: Row(children: [
-                    SizedBox(width: 150, child: Align(alignment: Alignment.centerLeft, child: SevChip(a.category, short: true))),
+                    SizedBox(width: 150, child: Align(alignment: Alignment.centerLeft, child: SevChip(a.middayBreak && a.level < 2 ? 'regulatory' : a.category, short: true))),
                     SizedBox(width: 180, child: Text(a.crewName, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600))),
                     Expanded(child: Text(_reason(a), style: t.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis)),
                     const Icon(Icons.chevron_right, color: HG.muted),
@@ -142,6 +142,7 @@ class _StatusHero extends StatelessWidget {
   }
 
   String _reason(Assessment a) {
+    if (a.middayBreak) return 'UAE midday break in force: no outdoor work in direct sun until 15:00';
     if (a.level < 0) return 'Data missing or stale - conditions cannot be confirmed';
     final l = a.limit;
     if (l == null) return '';

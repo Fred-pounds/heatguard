@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from ...schemas.intervention import INTERVENTION_LABELS
 from ...services.heatguard_service import HeatGuardService
+from ...services.regulatory import load_midday_break
 from ...services.risk_engine import CATEGORY_LABELS
 from ...services.simulation_service import scenario_catalog
 from ..deps import get_service, public_reading
@@ -30,6 +31,7 @@ async def meta(svc: HeatGuardService = Depends(get_service)):
         "categories": CATEGORY_LABELS,
         "intervention_types": INTERVENTION_LABELS,
         "scenarios": scenario_catalog(),
+        "regulations": [rule.data] if svc.settings.uae_midday_break and (rule := load_midday_break()) else [],
         "settings": {
             "stale_after_seconds": svc.settings.stale_after_seconds,
             "escalate_after_seconds": svc.settings.escalate_after_seconds,
@@ -143,7 +145,8 @@ async def worker_notice(crew_id: str, svc: HeatGuardService = Depends(get_servic
         "actions": actions,
         "active_protective_actions": active_ivs,
         "water_reminder": cat != "routine",
-        "emergency": ["If a co-worker is confused, collapses or stops sweating: call for help immediately and follow the site emergency plan.",
+        "midday_break": bool(a and a.get("regulatory_flags")),
+        "emergency": ["If a co-worker is confused, collapses or stops sweating: call 998 (UAE ambulance) and the site first-aider immediately.",
                       "Move them to shade, loosen clothing and cool them with water while help comes.",
                       "Tell your supervisor about any dizziness, headache, nausea or cramps."],
         "data_origin": a.get("data_origin", "SIMULATED") if a else "SIMULATED",

@@ -144,7 +144,7 @@ class _Conditions extends StatelessWidget {
 
     return SectionCard(
       title: 'Current conditions',
-      subtitle: '${ws.name} · ${humanize(ws.environment)} · ${r?.simClock == null ? '' : 'site time ${r!.simClock} · '}updated ${ago(r?.receivedAt)}',
+      subtitle: '${ws.name} · ${humanize(ws.environment)} · ${r?.simClock == null ? '' : '${siteTime(r!.simClock, date: r.simDate)} · '}updated ${ago(r?.receivedAt)}',
       trailing: StatusDot(status, label: switch (status) {
         'ok' => 'Sensors normal',
         'degraded' => 'Sensor problem',

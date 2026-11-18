@@ -167,6 +167,8 @@ class _WorkerPageState extends State<WorkerPage> {
         ]),
       ),
       const SizedBox(height: 14),
+      if (n['midday_break'] == true)
+        _tile(Icons.wb_sunny_outlined, const Color(0xFF1D4ED8), l.t('midday_break')),
       if (n['water_reminder'] == true || cat == 'routine')
         _tile(Icons.water_drop, const Color(0xFF1C7ED6), l.t('water')),
       if (n['work_rest'] != null) _tile(Icons.schedule, HG.elevated, '${l.t('work_rest')}: ${n['work_rest']}'),

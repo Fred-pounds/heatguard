@@ -38,6 +38,7 @@ class HeatGuardRepository:
         self.simulation: dict = {}
         self.system_health: dict = {}
         self.evaluation: dict | None = None
+        self.meta: dict = {}
         self._pending: dict[str, Any] = {}
         self.last_sync: str | None = None
         self.sync_error: str | None = None
@@ -70,6 +71,7 @@ class HeatGuardRepository:
                         if key in item and item[key] is None:
                             item[key] = []
             self.evaluation = tree.get("evaluation")
+            self.meta = dict(tree.get("meta") or {})
 
     # ------------------------------------------------------------------ queue
     def _queue(self, path: str, value: Any) -> None:
@@ -172,6 +174,22 @@ class HeatGuardRepository:
     def set_evaluation(self, ev: dict) -> None:
         self.evaluation = ev
         self._queue("evaluation", ev)
+
+    def set_meta(self, meta: dict) -> None:
+        self.meta = {**self.meta, **meta}
+        self._queue("meta", self.meta)
+
+    def reset_all(self) -> None:
+        """Delete everything, including worksites and crews (used to replace outdated demo data)."""
+        self.clear_operational_data()
+        with self._lock:
+            self.worksites.clear()
+            self.crews.clear()
+            self.simulation = {}
+            self.meta = {}
+            for p in ("worksites", "crews", "simulation", "system_health", "meta"):
+                self._pending.pop(p, None)
+                self._queue(p, None)
 
     def clear_operational_data(self) -> None:
         """Remove readings, assessments, alerts, interventions and events (keeps worksites/crews)."""

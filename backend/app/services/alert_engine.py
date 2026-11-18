@@ -48,7 +48,7 @@ class AlertEngine:
 
     # ------------------------------------------------------------------ process
     def process(self, a: Assessment, worksite_name: str) -> list[dict]:
-        changed: list[dict] = []
+        changed: list[dict] = self._regulatory(a, worksite_name)
         if a.risk_category == "unavailable":
             scope = SITE_SCOPE if not a.data_quality.environmental_data_available else a.crew_id
             name = "All crews at site" if scope == SITE_SCOPE else a.crew_name
@@ -79,6 +79,36 @@ class AlertEngine:
                 self._improve(heat, a, "below alert threshold")
                 changed.append(heat)
         return changed
+
+    def _regulatory(self, a: Assessment, worksite_name: str) -> list[dict]:
+        """One site-level alert while a legal restriction (UAE midday break) is in force."""
+        existing = self.open_alert(a.worksite_id, SITE_SCOPE, "regulatory")
+        if a.regulatory_flags:
+            f = a.regulatory_flags[0]
+            if existing:
+                existing["duplicate_count"] = existing.get("duplicate_count", 0) + 1
+                if existing["improving_streak"]:
+                    existing["improving_streak"] = 0
+                    existing["resolution_status"] = "open"
+                self.repo.save_alert(existing)
+                return [existing]
+            action = next((r.model_dump() for r in a.recommended_actions if r.priority == "urgent"), None)
+            alert = Alert(
+                alert_id=new_id("alr"), timestamp=now_iso(), updated_at=now_iso(),
+                worksite_id=a.worksite_id, worksite_name=worksite_name, crew_id=SITE_SCOPE, crew_name="All outdoor crews",
+                alert_type="regulatory", severity="regulatory", severity_level=3, peak_severity="regulatory",
+                explanation=f"{f['detail']} {f['verification_note']}",
+                contributing_factors=[{"factor": f["title"], "detail": f["detail"], "direction": "increases_concern"}],
+                recommendations=[action] if action else [],
+                assessment_id=a.assessment_id, latest_category=a.risk_category, data_origin=a.data_origin,
+                history=[AlertEvent(timestamp=now_iso(), event="created", detail=f"{f['title']} ({f['authority']})")],
+            ).model_dump()
+            self.repo.save_alert(alert)
+            return [alert]
+        if existing:
+            self._improve(existing, a, "outside the midday-break window")
+            return [existing]
+        return []
 
     def _raise_or_repeat(self, a: Assessment, alert_type: str, crew_id: str, crew_name: str, worksite_name: str,
                          severity: str, level: int) -> list[dict]:
@@ -141,7 +171,7 @@ class AlertEngine:
         alert["improving_streak"] = alert.get("improving_streak", 0) + 1
         alert["latest_category"] = a.risk_category
         alert["updated_at"] = now_iso()
-        needed = 3 if alert["alert_type"] == "data_quality" else self.sustained
+        needed = 3 if alert["alert_type"] in ("data_quality", "regulatory") else self.sustained
         if alert["resolution_status"] == "open" and alert["improving_streak"] >= needed:
             alert["resolution_status"] = "conditions_improving"
             alert["history"].append(_event(

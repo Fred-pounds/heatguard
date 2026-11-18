@@ -39,8 +39,23 @@ class SettingsPage extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text('${g['name']} · ${g['edition']} · ${g['publication']}', style: t.bodySmall),
+          const SizedBox(height: 4),
+          Text('Configured for Abu Dhabi, UAE: site times in Gulf Standard Time (UTC+4), UAE midday-break rule, ambulance 998.', style: t.bodySmall),
         ]),
       ),
+      for (final r in jList(s.meta['regulations']))
+        section('UAE regulations: ${r['name']}', Icons.wb_sunny_outlined, [
+          KV('Authority', '${r['authority']}', width: 150),
+          KV('Rule', '${r['rule']}', width: 150),
+          KV('When', '${r['window_start']}-${r['window_end']}, every day from ${r['period_start']} to ${r['period_end']} (MM-DD), Gulf Standard Time', width: 150),
+          KV('Applies to', '${r['applies_to']}', width: 150),
+          KV('Exemptions', '${r['exemptions']}', width: 150),
+          const SizedBox(height: 6),
+          Text('${r['verification_note']}', style: t.bodySmall),
+          const SizedBox(height: 4),
+          Text('This is a legal working-time rule, not a heat-stress limit: it adds a compliance alert and action without changing the NIOSH risk level. '
+              'Configured in backend/app/guidelines/uae_midday_break.json; disable with HEATGUARD_UAE_MIDDAY_BREAK=false.', style: t.bodySmall),
+        ], open: true),
       section('Risk levels', Icons.stacked_bar_chart, [
         for (final c in jList(jMap(g['risk_categories'])['categories']))
           Padding(
@@ -85,6 +100,7 @@ class SettingsPage extends StatelessWidget {
         for (final l in (g['limitations'] as List? ?? [])) Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('• $l', style: t.bodyMedium)),
       ]),
       section('Data governance', Icons.verified_user_outlined, const [
+        _Principle('UAE data protection', 'Any personal data in a future version must comply with the UAE Personal Data Protection Law (Federal Decree-Law No. 45 of 2021), or the applicable free-zone regime such as ADGM.'),
         _Principle('Data minimisation', 'Only crew-level work context and environmental data are stored. No names or health data.'),
         _Principle('Consent', 'Any future personal or physiological signal must be optional, with informed consent that can be withdrawn.'),
         _Principle('Access control', 'Supervisors see crew-level data. Workers see only their own crew\'s notice.'),

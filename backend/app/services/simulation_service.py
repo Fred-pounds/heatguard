@@ -97,6 +97,7 @@ def scenario_catalog() -> list[dict]:
             "description": s.description,
             "indoor": s.indoor,
             "start_clock": s.start_clock,
+            "sim_date": s.sim_date,
             "duration_min": s.duration_min,
             "suggested_context": s.suggested_context,
             "scheduled_faults": [
