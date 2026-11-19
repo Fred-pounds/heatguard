@@ -4,7 +4,9 @@ Run:  uvicorn app.main:app --reload --port 8000   (from the backend/ directory)
 """
 from __future__ import annotations
 
+import asyncio
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -19,13 +21,39 @@ from .services.heatguard_service import HeatGuardService
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
 
+KEEP_AWAKE_SECONDS = 600  # free hosting sleeps after ~15 min without visitors
+
+
+async def keep_awake(url: str) -> None:
+    """Hosted demo only: visit our own public URL every 10 minutes so the free instance does not go to sleep.
+
+    Render sets RENDER_EXTERNAL_URL; the request goes out and comes back through Render's router, which counts as a
+    visitor. Disable with HEATGUARD_KEEP_AWAKE=false.
+    """
+    import httpx
+
+    log = logging.getLogger("heatguard")
+    async with httpx.AsyncClient(timeout=30) as client:
+        while True:
+            await asyncio.sleep(KEEP_AWAKE_SECONDS)
+            try:
+                await client.get(f"{url.rstrip('/')}/api/health")
+            except Exception as exc:  # never let this affect the service
+                log.info("Keep-awake ping failed: %s", exc)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     service = HeatGuardService(get_settings())
     service.initialise()
     app.state.service = service
     service.start_background()
+    url = os.getenv("RENDER_EXTERNAL_URL")
+    pinger = (asyncio.create_task(keep_awake(url))
+              if url and os.getenv("HEATGUARD_KEEP_AWAKE", "true").lower() != "false" else None)
     yield
+    if pinger:
+        pinger.cancel()
     await service.shutdown()
 
 

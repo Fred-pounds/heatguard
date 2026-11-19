@@ -5,7 +5,7 @@ shows a talk track for each one, and its button performs the step and opens the 
 through by hand; the steps work the same way.
 
 **Before judges arrive**
-1. Open the live demo (https://heatguard-tsl5.onrender.com; wake it a couple of minutes early, the free plan sleeps when idle) or run `./scripts/run_demo.sh`, and open it in a desktop browser at 1440 px wide or more.
+1. Open the live demo (https://heatguard-tsl5.onrender.com; it keeps itself awake) or run `./scripts/run_demo.sh`, and open it in a desktop browser at 1440 px wide or more.
 2. Open **Demo guide** and press **Prepare**. This resets the simulation, clears history and builds 30 minutes of readings.
 3. Optional: open the worker app on a phone: `https://heatguard-tsl5.onrender.com/worker/` (or `http://<laptop-ip>:8000/worker/` on the same Wi-Fi), choose a language, *Concrete Crew A* and badge *CA-02* with code `150392` (codes are listed for the OHS role under Worker health).
 

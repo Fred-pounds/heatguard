@@ -6,7 +6,7 @@
 **Explainable occupational heat-risk early warning and intervention system** (hackathon prototype)
 
 **Live demo:** dashboard **https://heatguard-tsl5.onrender.com** · worker app **https://heatguard-tsl5.onrender.com/worker/** (badge CA-02, code `150392`). No login needed.
-The free hosting sleeps when idle: the first visit can take about a minute.
+The hosted demo keeps itself awake (it visits its own health check every 10 minutes), so it is ready at any time.
 
 > *From environmental monitoring to proactive worker protection.*
 
@@ -92,8 +92,8 @@ alerts the device when the level rises.
 * **Guided demo:** click **Demo guide** in the top bar. It walks through the 5-minute storyline with one-click
   steps (see [docs/demo_script.md](docs/demo_script.md)).
 * **Hosted link for judges:** https://heatguard-tsl5.onrender.com (worker app: https://heatguard-tsl5.onrender.com/worker/). To host your own copy, click *Deploy to Render* above, or run the Docker image anywhere
-  (`docker build -t heatguard . && docker run -p 8000:8000 heatguard`). The free Render plan sleeps when idle and
-  resets its demo data on restart.
+  (`docker build -t heatguard . && docker run -p 8000:8000 heatguard`). On Render the service keeps itself awake via `RENDER_EXTERNAL_URL`
+  (set `HEATGUARD_KEEP_AWAKE=false` to turn this off); demo data resets when it restarts.
 
 ## Quick start
 
